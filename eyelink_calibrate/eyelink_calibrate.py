@@ -78,14 +78,10 @@ class eyelink_calibrate(item.item):
 			data_file = ""
 			for c in os.path.splitext(os.path.basename(self.get("logfile")))[0]:
 				if c.isalnum():
-					data_file += c
-			data_file += ".edf"
-
-			if len(data_file) > 12:
-				raise exceptions.runtime_error("The Eyelink does not support filenames longer than 12 characters (including the extension). The name of the current logfile ('%s') is therefore too long. Please run the experiment again and choose a shorter name for the logfile." % os.path.basename(self.get("logfile")))
+					data_file += c					
+			data_file = data_file[:8] + ".edf" # Make sure it's not too long
 
 			print "eyelink_calibrate(): logging tracker data as %s" % data_file
-
 			if self.experiment.debug:
 				print "eyelink_calibrate(): loading libeyelink"
 

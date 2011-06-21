@@ -705,7 +705,7 @@ class eyelink_graphics(custom_display):
 		self.__target_beep__done__ = synth(self.experiment, freq = 880, length = 200)
 		self.__target_beep__error__ = synth(self.experiment, freq = 220, length = 200)
 		
-		self.state = "menu"
+		self.state = None
 		
 		self.imagebuffer = array.array('l')
 		self.pal = None	
@@ -746,8 +746,7 @@ class eyelink_graphics(custom_display):
 		self.my_canvas.text("Q: Exit set-up", y = yc - 0 * ld)
 		self.my_canvas.text("A: Automatically adjust threshold", y = yc + 1 * ld)
 		self.my_canvas.text("Up/ Down: Adjust threshold", y = yc + 2 * ld)
-		self.my_canvas.text("Left/ Right: Switch camera view", y = yc + 3 * ld)
-		self.my_canvas.text("Escape: Abort the experiment", y = yc + 5 * ld)
+		self.my_canvas.text("Left/ Right: Switch camera view", y = yc + 3 * ld)		
 		self.my_canvas.show()
 				
 	def exit_cal_display(self): 
@@ -800,26 +799,28 @@ class eyelink_graphics(custom_display):
 		beepid -- a pylink beep id
 		"""
 		
-		if beepid == pylink.DC_TARG_BEEP or beepid == pylink.CAL_TARG_BEEP:
+		if beepid == pylink.CAL_TARG_BEEP:
 			self.__target_beep__.play()
 		elif beepid == pylink.CAL_ERR_BEEP or beepid == pylink.DC_ERR_BEEP:			
 			self.my_canvas.clear()
 			self.my_canvas.text("Calibration unsuccessfull", y = self.my_canvas.ycenter() - 20)
 			self.my_canvas.text("Press 'q' to return to menu", y = self.my_canvas.ycenter() + 20)
 			self.my_canvas.show()
-			self.__target_beep__error__.play()			
-		else:#	CAL_GOOD_BEEP or DC_GOOD_BEEP			
-			self.my_canvas.clear()
-			self.my_canvas.text("Success!", y = self.my_canvas.ycenter() - 20)			
+			self.__target_beep__error__.play()
+		elif beepid == pylink.CAL_GOOD_BEEP:				
+			self.my_canvas.clear()			
 			if self.state == "calibration":
+				self.my_canvas.text("Success!", y = self.my_canvas.ycenter() - 20)			
 				self.my_canvas.text("Press 'v' to validate", y = self.my_canvas.ycenter() + 20)
 			elif self.state == "validation":
-				self.my_canvas.text("Press 'q' to return to menu", y = self.my_canvas.ycenter() + 20)
+				self.my_canvas.text("Success!", y = self.my_canvas.ycenter() - 20)						
+				self.my_canvas.text("Press 'q' to return to menu", y = self.my_canvas.ycenter() + 20)							
 			else:
-				self.my_canvas.text("Success")
-				
+				self.my_canvas.text("Press 'q' to return to menu")
 			self.my_canvas.show()			
 			self.__target_beep__done__.play()			
+		else: #	DC_GOOD_BEEP	or DC_TARG_BEEP
+			pass
 			
 	def getColorFromIndex(self,colorindex):
 
@@ -856,7 +857,7 @@ class eyelink_graphics(custom_display):
 		
 		try:
 			_key, time = self.my_keyboard.get_key()
-		except pygame.error:
+		except:
 			return None
 			
 		if _key == None:
@@ -866,11 +867,13 @@ class eyelink_graphics(custom_display):
 		key = self.my_keyboard.to_chr(_key)
 		
 		if key == "return":
-			keycode = pylink.ENTER_KEY			
+			keycode = pylink.ENTER_KEY
+			self.state = None
 		elif key == "space":
 			keycode = ord(" ")
 		elif key == "q":
-			keycode = pylink.ESC_KEY			
+			keycode = pylink.ESC_KEY	
+			self.state = None		
 		elif key == "c":
 			keycode = ord("c")
 			self.state = "calibration"
