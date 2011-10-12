@@ -49,7 +49,9 @@ _eyelink = None
 	
 class libeyelink:
 
-	def __init__(self, experiment, resolution, data_file = "default.edf", fg_color = (255, 255, 255), bg_color = (0, 0, 0), saccade_velocity_threshold = 35, saccade_acceleration_threshold = 9500):
+	MAX_TRY = 100
+
+	def __init__(self, experiment, resolution, data_file="default.edf", fg_color=(255, 255, 255), bg_color=(0, 0, 0), saccade_velocity_threshold=35, saccade_acceleration_threshold=9500):
 
 		"""<DOC>
 		Constructor. Initializes the connection to the Eyelink
@@ -211,7 +213,7 @@ class libeyelink:
 	
 		pylink.getEYELINK().doTrackerSetup()
 	
-	def drift_correction(self, pos = None, fix_triggered = False):
+	def drift_correction(self, pos=None, fix_triggered=False):
 
 		"""<DOC>
 		Performs drift correction and falls back to the calibration screen if
@@ -278,11 +280,12 @@ class libeyelink:
 		if not pylink.getEYELINK().waitForBlockStart(100, 1, 0):
 			raise exceptions.runtime_error("Failed to perform drift correction (waitForBlockStart error)")	
 			
-	def fix_triggered_drift_correction(self, pos = None, min_samples = 30, max_dev = 60, reset_threshold = 10):
+	def fix_triggered_drift_correction(self, pos=None, min_samples=30, max_dev=60, reset_threshold=10):
 
 		"""<DOC>
 		Performs fixation triggered drift correction and falls back to the
-		calibration screen if necessary
+		calibration screen if necessary. You can return to the set-up screen by
+		pressing the 'q' key.
 	
 		Keyword arguments:
 		pos -- the coordinate (x,y tuple) of the drift correction dot or None
@@ -294,8 +297,7 @@ class libeyelink:
 						   next (default = 10)
 	
 		Returns:
-		True on success, False on failure		#self.my_canvas.clear()
-
+		True on success, False on failure
 	
 		Exceptions:
 		Raises an exceptions.runtime_error on error
@@ -310,7 +312,7 @@ class libeyelink:
 			pos = self.resolution[0] / 2, self.resolution[1] / 2	
 		
 		self.prepare_drift_correction(pos)
-		my_keyboard = keyboard(self.experiment, keylist = ["escape"], timeout = 0)
+		my_keyboard = keyboard(self.experiment, keylist=["escape", "q"], timeout=0)
 		
 		# Loop until we have sufficient samples
 		lx = []
@@ -320,7 +322,7 @@ class libeyelink:
 			# Pressing escape enters the calibration screen	
 			if my_keyboard.get_key()[0] != None:
 				self.recording = False
-				print "libeyelink.fix_triggered_drift_correction(): escape pressed"
+				print "libeyelink.fix_triggered_drift_correction(): 'q' pressed"
 				return False
 	
 			# Collect a sample
@@ -385,10 +387,18 @@ class libeyelink:
 	
 		self.recording = True
 
-		# Params: write  samples, write event, send samples, send events
-		error = pylink.getEYELINK().startRecording(1, 1, 1, 1)
-		if error:
-			raise exceptions.runtime_error("Failed to start recording (startRecording error)")
+		i = 0
+		while True:							
+			# Params: write  samples, write event, send samples, send events
+			error = pylink.getEYELINK().startRecording(1, 1, 1, 1)
+			if not error:
+				break			
+			if i > self.MAX_TRY:
+				raise exceptions.runtime_error("Failed to start recording (startRecording error)")
+			i += 1
+			print "libeyelink.start_recording(): failed to start recording (attempt %d of %d)" \
+				% (i, self.MAX_TRY)
+			pylink.msecDelay(100)
 		
 		# Don't know what this is
 		pylink.pylink.beginRealTimeMode(100)
@@ -405,9 +415,9 @@ class libeyelink:
 	
 		self.recording = False	
 
-		pylink.endRealTimeMode();
-		pylink.getEYELINK().setOfflineMode();                          
-		pylink.msecDelay(500);                 
+		pylink.endRealTimeMode()
+		pylink.getEYELINK().setOfflineMode()
+		pylink.msecDelay(500)   
 
 	def close(self):
 
