@@ -112,56 +112,25 @@ class qteyelink_log(eyelink_log, qtplugin.qtplugin):
 		
 		# Pass the word on to the parent		
 		qtplugin.qtplugin.init_edit_widget(self, False)			
-
-		# Content editor
-		self.editor_msg = inline_editor.inline_editor(self.experiment)
-		self.editor_msg.apply.clicked.connect(self.apply_edit_changes)		
-		self.edit_vbox.addWidget(self.editor_msg)		
+		self.add_editor_control("msg", "Log message", tooltip = \
+			"The message to write to the Eyelink")		
 				
 		# Unlock
 		self.lock = True		
 		
 	def apply_edit_changes(self):
 	
-		"""
-		Set the variables based on the controls
-		"""
+		"""Apply the controls"""
 		
-		# Abort if the parent reports failure of if the controls are locked
 		if not qtplugin.qtplugin.apply_edit_changes(self, False) or self.lock:
-			return False
-			
-		msg = str(self.editor_msg.edit.toPlainText()).replace("\n", "<br />")
-		self.set("msg", msg)					
-				
-		self.editor_msg.setModified(False)		
-		# Refresh the main window, so that changes become visible everywhere
+			return					
 		self.experiment.main_window.refresh(self.name)		
-		
-		# Report success
-		return True
 
 	def edit_widget(self):
 	
-		"""
-		Set the controls based on the variables
-		"""
+		"""Update the controls"""
 		
-		# Lock the controls, otherwise a recursive loop might aris
-		# in which updating the controls causes the variables to be
-		# updated, which causes the controls to be updated, etc...
 		self.lock = True
-		
-		self.editor_msg.edit.setPlainText(self.get("msg").replace("<br />", "\n"))
-		
-		# Let the parent handle everything
-		qtplugin.qtplugin.edit_widget(self)						
-		
-		# Unlock
-		self.lock = False
-		
-		# Return the _edit_widget
+		qtplugin.qtplugin.edit_widget(self)		
+		self.lock = False		
 		return self._edit_widget
-		
-		
-
