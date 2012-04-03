@@ -35,7 +35,7 @@ class eyelink_calibrate(item.item):
 		Constructor
 		"""
 
-		self.version = 0.15
+		self.version = 0.16
 
 		# The item_typeshould match the name of the module
 		self.item_type = "eyelink_calibrate"
