@@ -60,7 +60,7 @@ class eyelink_log(item.item):
 		if not hasattr(self.experiment, "eyelink"):
 			raise exceptions.runtime_error("Please connect to the eyelink using the the eyelink_calibrate plugin before using any other eyelink plugins")
 			
-		self._msg = self.msg.split("<br />")	
+		self._msg = self.msg.split("\n")
 																
 		# Report success
 		return True
