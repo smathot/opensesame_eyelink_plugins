@@ -79,7 +79,7 @@ class eyelink_calibrate(item.item):
 			for c in os.path.splitext(os.path.basename(self.get("logfile")))[0]:
 				if c.isalnum():
 					data_file += c					
-			data_file = data_file[:8] + ".edf" # Make sure it's not too long
+			data_file = data_file + ".edf"
 
 			print "eyelink_calibrate(): logging tracker data as %s" % data_file
 			if self.experiment.debug:

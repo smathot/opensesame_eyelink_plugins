@@ -72,6 +72,10 @@ class libeyelink:
 		</DOC>"""
 		
 		global _eyelink
+		
+		stem, ext = os.path.splitext(data_file)
+		if len(stem) > 8 or len(ext) > 4:
+			raise exceptions.runtime_error("The Eyelink cannot handle filenames longer than 8 characters (plus .EDF extension)")
 
 		self.experiment = experiment
 		self.data_file = data_file
