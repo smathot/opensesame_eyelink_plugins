@@ -664,7 +664,7 @@ class libeyelink_dummy:
 
 	def wait_for_saccade_end(self):
 		pygame.time.delay(100)
-		return pygame.time.get_ticks(), (0, 0)	
+		return pygame.time.get_ticks(), (0, 0), (0, 0)
 
 	def wait_for_fixation_start(self):
 		pygame.time.delay(100)
