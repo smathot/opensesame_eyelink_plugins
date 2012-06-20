@@ -605,6 +605,48 @@ class libeyelink:
 		d = self.wait_for_event(pylink.ENDBLINK)	
 		return d.getTime()
 		
+	#
+	#	New by Daniel (20-06-2012)
+	#	
+	
+	def convert_surface_to_backdrop(self,canvas):
+		
+		""" convert a surface to a format the eyelink understands """
+		
+		surface = canvas.surface			# TODO: Check if this involves a pygame surface. If not, throw exception!
+		width = surface.get_width()
+		height = surface.get_height()
+		bmp = pygame.surfarray.array3d(surface).swapaxes(0,1).tolist()					
+		bmp = [map(tuple,line) for line in bmp]
+		return bmp
+	
+	
+	def set_bitmap_backdrop(self,canvas,preppedBackdropImage=None):
+		"""
+		Set backdrop image of Eyelink computer
+		For performance, it can be useful sometimes to already prepare the image to send to the eyelink in the prepare phase.
+		This prepared image can be optionally supplied in preppedBackdropImage (a  3 dimensional list with hor-lines x ver-lines x pixels)
+		Otherwise, supplying the surface is enough and this function will take care of the conversion		
+		"""
+		
+		# TODO: Check if canvas contains a pygame surface. If not, throw exception!
+		
+		if not preppedBackdropImage is None: 
+			if	type(preppedBackdropImage) == list:
+				width = len(preppedBackdropImage[0])
+				height = len(preppedBackdropImage)
+				pylink.getEYELINK().bitmapBackdrop(width,height,preppedBackdropImage,0,0,width,height,0,0,pylink.BX_MAXCONTRAST)
+			else:
+				raise exceptions.runtime_error("Backdrop image has invalid format")
+		else:
+			backdrop = convert_surface_to_backdrop(canvas)
+			width = len(backdrop[0])
+			height = len(backdrop)		
+			pylink.getEYELINK().bitmapBackdrop(width,height,backdrop,0,0,width,height,0,0,pylink.BX_MAXCONTRAST)
+			
+			
+			
+		
 class libeyelink_dummy:
 
 	"""
@@ -684,7 +726,34 @@ class libeyelink_dummy:
 	
 	def wait_for_blink_end(self):
 		pygame.time.delay(100)
-		return pygame.time.get_ticks(), (0, 0)			
+		return pygame.time.get_ticks(), (0, 0)		
+		
+
+	#
+	#	New by Daniel (20-06-2012)
+	#	
+
+	def convert_surface_to_backdrop(self,canvas):	
+		surface = canvas.surface			# TODO: Check if this involves a pygame surface. If not, throw exception!
+		width = surface.get_width()
+		height = surface.get_height()
+		bmp = pygame.surfarray.array3d(surface).swapaxes(0,1).tolist()					
+		bmp = [map(tuple,line) for line in bmp]
+		return bmp
+	
+	
+	def set_bitmap_backdrop(self,canvas,preppedBackdropImage=None):
+		# TODO: Check if canvas contains a pygame surface. If not, throw exception!
+		if not preppedBackdropImage is None:
+			if type(preppedBackdropImage) == list:
+				width = len(preppedBackdropImage[0])
+				height = len(preppedBackdropImage)
+			else:
+				raise exceptions.runtime_error("Failed to determine which eye is being recorded")			
+		else:
+			backdrop = convert_surface_to_backdrop(canvas)
+			width = len(backdrop[0])
+			height = len(backdrop)		
 		
 	
 class eyelink_graphics(custom_display):
