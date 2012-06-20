@@ -619,7 +619,7 @@ class libeyelink_dummy:
 		pass
 	
 	def log(self, msg):
-		pass	
+		print 'libeyelink.log(): %s' % msg
 
 	def log_var(self, var, val):
 		pass	
