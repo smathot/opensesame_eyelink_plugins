@@ -621,10 +621,7 @@ class libeyelink:
 			raise exceptions.runtime_error( \
 				'prepare_backdrop requires the legacy back-end')
 		
-		surface = canvas.surface
-		width = surface.get_width()
-		height = surface.get_height()
-		bmp = pygame.surfarray.array3d(surface).swapaxes(0,1).tolist()					
+		bmp = pygame.surfarray.array3d(canvas.surface).swapaxes(0,1).tolist()					
 		bmp = [map(tuple,line) for line in bmp]
 		return bmp
 	
@@ -659,9 +656,9 @@ class libeyelink:
 			else:
 				raise exceptions.runtime_error("Backdrop image has invalid format")
 		else:
-			backdrop = convert_surface_to_backdrop(canvas)
-			width = len(backdrop[0])
-			height = len(backdrop)		
+			backdrop = prepare_backdrop(canvas)
+			width = canvas.surface.get_width()
+			height = canvas.surface.get_height()		
 			pylink.getEYELINK().bitmapBackdrop(width,height,backdrop,0,0,width,height,0,0,pylink.BX_MAXCONTRAST)
 		
 class libeyelink_dummy:
