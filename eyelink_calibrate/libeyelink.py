@@ -80,7 +80,9 @@ class libeyelink:
 		self.experiment = experiment
 		self.data_file = data_file
 		self.resolution = resolution
-		self.recording = False		
+		self.recording = False
+		self.cal_beep = True
+		self.cal_target_size = 16
 		
 		self.saccade_velocity_treshold = saccade_velocity_threshold
 		self.saccade_acceleration_treshold = saccade_acceleration_threshold
@@ -203,10 +205,14 @@ class libeyelink:
 	
 		return pylink.getEYELINK().isConnected()
 		
-	def calibrate(self):
+	def calibrate(self, beep=True, target_size=16):
 
 		"""<DOC>
 		Starts eyelink calibration
+		
+		Keyword arguments:
+		beep -- indicates whether the calibration target should beep (default=True)
+		target_size -- the size of the calibration target (default=16)
 	
 		Exceptions:
 		Raises an exceptions.runtime_error on failure		
@@ -215,6 +221,8 @@ class libeyelink:
 		if self.recording:
 			raise exceptions.runtime_error("Trying to calibrate after recording has started")	
 	
+		self.cal_beep = beep
+		self.cal_target_size = target_size
 		pylink.getEYELINK().doTrackerSetup()
 	
 	def drift_correction(self, pos=None, fix_triggered=False):
@@ -862,8 +870,13 @@ class eyelink_graphics(custom_display):
 		"""
 		
 		self.my_canvas.clear()
-		self.my_canvas.fixdot(x, y)
+		
+		#self.my_canvas.fixdot(x, y)
+		self.my_canvas.circle(x, y, r=self.experiment.eyelink.cal_target_size, fill=True)
+		self.my_canvas.circle(x, y, r=2, color='black', fill=True)
 		self.my_canvas.show()
+		if self.experiment.eyelink.cal_beep:
+			self.play_beep(pylink.CAL_TARG_BEEP)
 		
 	def play_beep(self, beepid):
 	
@@ -879,7 +892,7 @@ class eyelink_graphics(custom_display):
 		elif beepid == pylink.CAL_ERR_BEEP or beepid == pylink.DC_ERR_BEEP:			
 			self.my_canvas.clear()
 			self.my_canvas.text("Calibration unsuccessfull", y = self.my_canvas.ycenter() - 20)
-			self.my_canvas.text("Press 'q' to return to menu", y = self.my_canvas.ycenter() + 20)
+			self.my_canvas.text("Press 'Enter' to return to menu", y = self.my_canvas.ycenter() + 20)
 			self.my_canvas.show()
 			self.__target_beep__error__.play()
 		elif beepid == pylink.CAL_GOOD_BEEP:				
@@ -889,9 +902,9 @@ class eyelink_graphics(custom_display):
 				self.my_canvas.text("Press 'v' to validate", y = self.my_canvas.ycenter() + 20)
 			elif self.state == "validation":
 				self.my_canvas.text("Success!", y = self.my_canvas.ycenter() - 20)						
-				self.my_canvas.text("Press 'q' to return to menu", y = self.my_canvas.ycenter() + 20)							
+				self.my_canvas.text("Press 'Enter' to return to menu", y = self.my_canvas.ycenter() + 20)							
 			else:
-				self.my_canvas.text("Press 'q' to return to menu")
+				self.my_canvas.text("Press 'Enter' to return to menu")
 			self.my_canvas.show()			
 			self.__target_beep__done__.play()			
 		else: #	DC_GOOD_BEEP	or DC_TARG_BEEP
@@ -1043,7 +1056,12 @@ class eyelink_graphics(custom_display):
 				im = visual.PatchStim(self.experiment.window, tex = img)
 				im.setSize( (self.experiment.get("width") / 2, self.experiment.get("height") / 2))  
 				im.draw()				
-				self.experiment.window.flip()			
+				self.experiment.window.flip()
+			elif self.experiment.canvas_backend == "xpyriment":
+				img.save("__eyelink__.jpg")
+				self.my_canvas.clear()		
+				self.my_canvas.image('__eyelink__.jpg')
+				self.my_canvas.show()				
 			else:				
 				self.my_canvas.clear()
 				self.my_canvas.text("Eye preview not supported for this back-end")				
