@@ -80,8 +80,8 @@ class eyelink_drift_correct(item.item):
 		self.set_item_onset()
 
 		try:
-			x = int(self.get("xpos"))
-			y = int(self.get("ypos"))
+			x = int(self.get("xpos", _eval=True))
+			y = int(self.get("ypos", _eval=True))
 		except:
 			raise exceptions.runtime_error("Please use numeric values for the coordinates in eyelink_drift_correct item '%s'" % self.name)
 
