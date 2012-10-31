@@ -45,6 +45,8 @@ class eyelink_calibrate(item.item):
 		self.tracker_attached = self._text_attached
 		self.sacc_vel_thresh = 35
 		self.sacc_acc_thresh = 9500
+		self.cal_target_size = 16
+		self.cal_beep = 'yes'
 
 		# This options makes OpenSesame restart automatically after each session,
 		# but this is not neessary anymore
@@ -125,7 +127,8 @@ class eyelink_calibrate(item.item):
 
 		self.set_item_onset()
 
-		self.experiment.eyelink.calibrate()
+		self.experiment.eyelink.calibrate(beep=self.get('cal_beep')=='yes', \
+			target_size=self.get('cal_target_size'))
 
 		# Report success
 		return True
@@ -161,9 +164,16 @@ class qteyelink_calibrate(eyelink_calibrate, qtplugin.qtplugin):
 
 		# Pass the word on to the parent
 		qtplugin.qtplugin.init_edit_widget(self, False)
-		self.add_combobox_control("tracker_attached", "Tracker attached", [self._text_attached, self._text_not_attached], tooltip = "Indicates if the tracker is attached")
-		self.add_line_edit_control("sacc_vel_thresh", "Saccade velocity threshold", default = self.get("sacc_vel_thresh"), tooltip = "Saccade detection parameter")
-		self.add_line_edit_control("sacc_acc_thresh", "Saccade acceleration threshold", default = self.get("sacc_acc_thresh"), tooltip = "Saccade detection parameter")
+		self.add_combobox_control("tracker_attached", "Tracker attached", [self._text_attached, self._text_not_attached], \
+			tooltip = "Indicates if the tracker is attached")
+		self.add_checkbox_control("cal_beep", "Calibration beep", \
+			tooltip = "Indicates whether a beep sounds when the calibration target jumps")
+		self.add_spinbox_control("cal_target_size", "Calibration target size", 0, 256,
+			tooltip = "The size of the calibration target in pixels")			
+		self.add_line_edit_control("sacc_vel_thresh", "Saccade velocity threshold", default = self.get("sacc_vel_thresh"), \
+			tooltip = "Saccade detection parameter")
+		self.add_line_edit_control("sacc_acc_thresh", "Saccade acceleration threshold", default = self.get("sacc_acc_thresh"), \
+			tooltip = "Saccade detection parameter")
 		self.add_text("<small><b>Eyelink OpenSesame plug-in v%.2f</b></small>" % self.version)
 
 		# Add a stretch to the edit_vbox, so that the controls do not
