@@ -161,7 +161,7 @@ class qteyelink_calibrate(eyelink_calibrate, qtplugin.qtplugin):
 
 		# Pass the word on to the parent
 		qtplugin.qtplugin.init_edit_widget(self, False)
-		self.add_combobox_control("tracker_attached", "Tracked attached", [self._text_attached, self._text_not_attached], tooltip = "Indicates if the tracker is attached")
+		self.add_combobox_control("tracker_attached", "Tracker attached", [self._text_attached, self._text_not_attached], tooltip = "Indicates if the tracker is attached")
 		self.add_line_edit_control("sacc_vel_thresh", "Saccade velocity threshold", default = self.get("sacc_vel_thresh"), tooltip = "Saccade detection parameter")
 		self.add_line_edit_control("sacc_acc_thresh", "Saccade acceleration threshold", default = self.get("sacc_acc_thresh"), tooltip = "Saccade detection parameter")
 		self.add_text("<small><b>Eyelink OpenSesame plug-in v%.2f</b></small>" % self.version)
