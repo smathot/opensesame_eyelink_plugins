@@ -164,8 +164,12 @@ class qteyelink_calibrate(eyelink_calibrate, qtplugin.qtplugin):
 		qtplugin.qtplugin.init_edit_widget(self, False)
 		self.add_combobox_control("tracker_attached", "Tracker attached", [self._text_attached, self._text_not_attached], \
 			tooltip = "Indicates if the tracker is attached")
-		self.add_checkbox_control("cal_beep", "Calibration beep", \
-			tooltip = "Indicates whether a beep sounds when the calibration target jumps")
+		if hasattr(self, 'add_checkbox_control'):
+			self.add_checkbox_control("cal_beep", "Calibration beep", \
+				tooltip = "Indicates whether a beep sounds when the calibration target jumps")
+		else:
+			self.add_combobox_control("cal_beep", "Calibration beep", ['yes', 'no'], \
+				tooltip = "Indicates whether a beep sounds when the calibration target jumps")
 		self.add_spinbox_control("cal_target_size", "Calibration target size", 0, 256,
 			tooltip = "The size of the calibration target in pixels")			
 		self.add_line_edit_control("sacc_vel_thresh", "Saccade velocity threshold", default = self.get("sacc_vel_thresh"), \
