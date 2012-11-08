@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License
 along with OpenSesame.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from libopensesame import item, exceptions
+from libopensesame import item, exceptions, debug
 from libqtopensesame import qtplugin
 import os.path
 import imp
@@ -35,7 +35,7 @@ class eyelink_calibrate(item.item):
 		Constructor
 		"""
 
-		self.version = 0.18
+		self.version = 0.19
 
 		# The item_typeshould match the name of the module
 		self.item_type = "eyelink_calibrate"
@@ -82,21 +82,21 @@ class eyelink_calibrate(item.item):
 				if c.isalnum():
 					data_file += c					
 			data_file = data_file + ".edf"
+			
+			# Automatically rename common filenames that are too long
+			if data_file[:8] == 'subject-':
+				data_file = 'S' + data_file[8:]
+			if data_file == 'defaultlog.edf':
+				data_file = 'default.edf'
 
 			print "eyelink_calibrate(): logging tracker data as %s" % data_file
-			if self.experiment.debug:
-				print "eyelink_calibrate(): loading libeyelink"
-
+			debug.msg("loading libeyelink")
 			self.experiment.eyelink = libeyelink.libeyelink(self.experiment, (self.get("width"), self.get("height")), data_file = data_file, saccade_velocity_threshold = self.get("sacc_vel_thresh"), saccade_acceleration_threshold = self.get("sacc_acc_thresh"))
 			self.experiment.cleanup_functions.append(self.close)
-
 			if self.get("restart") == "Yes":
 				self.experiment.restart = True
 		else:
-
-			if self.experiment.debug:
-				print "eyelink_calibrate.prepare(): loading libeyelink (dummy mode)"
-
+			debug.msg("loading libeyelink (dummy mode)")
 			self.experiment.eyelink = libeyelink.libeyelink_dummy()
 
 		# Report success
@@ -109,13 +109,11 @@ class eyelink_calibrate(item.item):
 		OpenSesame and the eyelink in a mess
 		"""
 
-		if self.experiment.debug:
-			print "eyelink_calibrate.close(): starting eyelink deinitialisation"
+		debug.msg("starting eyelink deinitialisation")
 		self.sleep(100)
 		self.experiment.eyelink.close()
 		self.experiment.eyelink = None
-		if self.experiment.debug:
-			print "eyelink_calibrate.close(): finished eyelink deinitialisation"
+		debug.msg("finished eyelink deinitialisation")
 		self.sleep(100)
 
 	def run(self):
