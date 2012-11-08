@@ -23,7 +23,6 @@ if __name__ != "__main__":
 # may still use dummy mode.
 try:
 	import pylink
-	import Image	
 	custom_display = pylink.EyeLinkCustomDisplay
 except:
 	custom_display = object
@@ -37,7 +36,11 @@ from openexp.synth import synth
 import os.path
 import array
 import math
-from PIL import Image
+import tempfile
+try:
+	import Image	
+except:
+	from PIL import Image
 
 # Don't fail if psychopy isn't available, because we may use others backends
 try:
@@ -694,7 +697,7 @@ class libeyelink_dummy:
 	def connected(self):
 		pass
 		
-	def calibrate(self):
+	def calibrate(self, beep=True, target_size=16):
 		pass
 	
 	def drift_correction(self, pos = None, fix_triggered = False):
@@ -781,7 +784,7 @@ class eyelink_graphics(custom_display):
 
 		self.experiment = experiment
 		self.my_canvas = canvas(self.experiment)
-		self.my_keyboard = keyboard(self.experiment, timeout = 0)
+		self.my_keyboard = keyboard(self.experiment, timeout=0)
 		self.my_mouse = mouse(self.experiment)
 		
 		self.__target_beep__ = synth(self.experiment, length = 50)
@@ -792,7 +795,8 @@ class eyelink_graphics(custom_display):
 		
 		self.imagebuffer = array.array('l')
 		self.pal = None	
-		self.size = (0,0)
+		self.size = (0,0)		
+		self.tmp_file = os.path.join(tempfile.gettempdir(), '__eyelink__.jpg')
 					
 		self.set_tracker(tracker)
 		self.last_mouse_state = -1	
@@ -871,9 +875,8 @@ class eyelink_graphics(custom_display):
 		
 		self.my_canvas.clear()
 		
-		#self.my_canvas.fixdot(x, y)
 		self.my_canvas.circle(x, y, r=self.experiment.eyelink.cal_target_size, fill=True)
-		self.my_canvas.circle(x, y, r=2, color='black', fill=True)
+		self.my_canvas.circle(x, y, r=2, color=self.experiment.background, fill=True)
 		self.my_canvas.show()
 		if self.experiment.eyelink.cal_beep:
 			self.play_beep(pylink.CAL_TARG_BEEP)
@@ -1028,45 +1031,22 @@ class eyelink_graphics(custom_display):
 		buff -- the frame buffer
 		"""
 		
-		i =0		
-		while i < width:
+		for i in range(width):
 			try:
 				self.imagebuffer.append(self.pal[buff[i]])				
 			except:
 				pass
-			i=i+1						
 				
-		if line == totlines:							
-							
+		if line == totlines:									
 			bufferv = self.imagebuffer.tostring()
-			img =Image.new("RGBX",self.size)
-			if self.experiment.canvas_backend == "legacy":
-				imgsz = self.experiment.get("width") / 2, self.experiment.get("height") / 2
-			else:
-				imgsz = self.size
+			img =Image.new("RGBX", self.size)
 			img.fromstring(bufferv)
-			img = img.resize(imgsz)							
-				
-			if self.experiment.canvas_backend == "legacy":				
-				img = pygame.image.fromstring(img.tostring(),imgsz,"RGBX")
-				self.my_canvas.clear()				
-				self.my_canvas.surface.blit(img,((self.my_canvas.surface.get_rect().w-imgsz[0])/2,(self.my_canvas.surface.get_rect().h-imgsz[1])/2))				
-				self.my_canvas.show()							
-			elif self.experiment.canvas_backend == "psycho":							
-				im = visual.PatchStim(self.experiment.window, tex = img)
-				im.setSize( (self.experiment.get("width") / 2, self.experiment.get("height") / 2))  
-				im.draw()				
-				self.experiment.window.flip()
-			elif self.experiment.canvas_backend == "xpyriment":
-				img.save("__eyelink__.jpg")
-				self.my_canvas.clear()		
-				self.my_canvas.image('__eyelink__.jpg')
-				self.my_canvas.show()				
-			else:				
-				self.my_canvas.clear()
-				self.my_canvas.text("Eye preview not supported for this back-end")				
-				self.my_canvas.show()
-									
+			img = img.resize(self.size)							
+			img = pygame.image.fromstring(img.tostring(), self.size, "RGBX")
+			self.my_canvas.clear()								
+			pygame.image.save(img, self.tmp_file)
+			self.my_canvas.image(self.tmp_file, scale=2.)
+			self.my_canvas.show()									
 			self.imagebuffer = array.array('l')		
 												
 	def set_image_palette(self, r, g, b): 
