@@ -724,7 +724,7 @@ class libeyelink_dummy:
 		pass
 
 	def sample(self):
-		pass
+		return (0,0)
 
 	def wait_for_event(self, event):
 		pass
