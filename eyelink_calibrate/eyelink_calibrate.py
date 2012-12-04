@@ -80,9 +80,9 @@ class eyelink_calibrate(item.item):
 			data_file = ""
 			for c in os.path.splitext(os.path.basename(self.get("logfile")))[0]:
 				if c.isalnum():
-					data_file += c					
+					data_file += c
 			data_file = data_file + ".edf"
-			
+
 			# Automatically rename common filenames that are too long
 			if data_file[:8] == 'subject-':
 				data_file = 'S' + data_file[8:]
@@ -171,7 +171,7 @@ class qteyelink_calibrate(eyelink_calibrate, qtplugin.qtplugin):
 			self.add_combobox_control("cal_beep", "Calibration beep", ['yes', 'no'], \
 				tooltip = "Indicates whether a beep sounds when the calibration target jumps")
 		self.add_spinbox_control("cal_target_size", "Calibration target size", 0, 256,
-			tooltip = "The size of the calibration target in pixels")			
+			tooltip = "The size of the calibration target in pixels")
 		self.add_line_edit_control("sacc_vel_thresh", "Saccade velocity threshold", default = self.get("sacc_vel_thresh"), \
 			tooltip = "Saccade detection parameter")
 		self.add_line_edit_control("sacc_acc_thresh", "Saccade acceleration threshold", default = self.get("sacc_acc_thresh"), \
