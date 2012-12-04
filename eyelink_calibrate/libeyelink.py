@@ -149,6 +149,8 @@ class libeyelink:
 		if not self.connected():
 			raise exceptions.runtime_error("Failed to connect to the eyetracker")
 			
+		# get time difference between tracker and display pc
+		self.tracker_display_delay = pylink.getEYELINK().trackerTime() - self.experiment.time()
 	
 	def send_command(self, cmd):
 
@@ -422,6 +424,7 @@ class libeyelink:
 		if not pylink.getEYELINK().waitForBlockStart(100, 1, 0):
 			raise exceptions.runtime_error("Failed to start recording (waitForBlockStart error)")
 		
+		
 	def stop_recording(self):
 
 		"""<DOC>
@@ -508,6 +511,9 @@ class libeyelink:
 	
 		Arguments:
 		event -- eyelink event, like pylink.STARTSACC
+		
+		Returns:
+		the critical event as float_data
 	
 		Exceptions:
 		Raises an exceptions.runtime_error on failure			
@@ -518,12 +524,18 @@ class libeyelink:
 	
 		if self.eye_used == None:
 			self.set_eye_used()
-
-		d = 0
-		while d != event:
-			d = pylink.getEYELINK().getNextData()
 		
-		return pylink.getEYELINK().getFloatData()
+		t_0 = self.experiment.time()
+		while True:
+			d = 0;
+			while d != event:
+				d = pylink.getEYELINK().getNextData()
+			# ignore d if its event occured before t_0:
+			float_data = pylink.getEYELINK().getFloatData()
+			if float_data.getTime() - self.tracker_display_delay > t_0:
+				break;
+		
+		return float_data;
 	
 	def wait_for_saccade_start(self):
 
@@ -538,7 +550,7 @@ class libeyelink:
 		</DOC>"""
 	
 		d = self.wait_for_event(pylink.STARTSACC)
-		return d.getTime(), d.getStartGaze()
+		return d.getTime() - self.tracker_display_delay, d.getStartGaze()
 	
 	def wait_for_saccade_end(self):
 
@@ -553,7 +565,7 @@ class libeyelink:
 		</DOC>"""
 	
 		d = self.wait_for_event(pylink.ENDSACC)
-		return d.getTime(), d.getStartGaze(), d.getEndGaze()
+		return d.getTime() - self.tracker_display_delay, d.getStartGaze(), d.getEndGaze()
 	
 	def wait_for_fixation_start(self):
 
@@ -568,7 +580,7 @@ class libeyelink:
 		</DOC>"""
 	
 		d = self.wait_for_event(pylink.STARTFIX)		
-		return d.getTime(), d.getStartGaze()
+		return d.getTime() - self.tracker_display_delay, d.getStartGaze()
 	
 	
 	def wait_for_fixation_end(self):
@@ -584,7 +596,7 @@ class libeyelink:
 		</DOC>"""
 	
 		d = self.wait_for_event(pylink.ENDFIX)	
-		return d.getTime(), d.getStartGaze(), d.getEndGaze()
+		return d.getTime() - self.tracker_display_delay, d.getStartGaze(), d.getEndGaze()
 	
 	def wait_for_blink_start(self):
 
@@ -599,7 +611,7 @@ class libeyelink:
 		</DOC>"""
 
 		d = self.wait_for_event(pylink.STARTBLINK)	
-		return d.getTime()
+		return d.getTime() - self.tracker_display_delay
 	
 	def wait_for_blink_end(self):
 
@@ -614,63 +626,99 @@ class libeyelink:
 		</DOC>"""
 
 		d = self.wait_for_event(pylink.ENDBLINK)	
-		return d.getTime()
+		return d.getTime() - self.tracker_display_delay
 		
 	def prepare_backdrop(self, canvas):
-		
+
 		"""<DOC>
 		Convert a surface to the format required by the eyelink.
-		
+
+		WARNING: this function can take between 50-150 ms to complete, depending on the resolution of the image
+		and the cpu power of your machine. Do not use during time critical phases of your experiment
+
 		Arguments:
 		canvas -- an openexp canvas
-		
+
 		Returns:
-		A image in (list x list x tuple) format
+		A tuple with ((list) image in array2d format, (int) image width, (int) image height)
 		</DOC>"""
-		
+
+		# Only works with legacy backend for now. Future releases should support all backends
 		if self.experiment.canvas_backend != 'legacy':
-			raise exceptions.runtime_error( \
-				'prepare_backdrop requires the legacy back-end')
-		
-		bmp = pygame.surfarray.array3d(canvas.surface).swapaxes(0,1).tolist()					
-		bmp = [map(tuple,line) for line in bmp]
-		return bmp
-	
-	
-	def set_backdrop(self, canvas, prepped_backdrop_image=None):
-	
+			raise exceptions.runtime_error('prepare_backdrop requires the legacy back-end')
+
+		return (pygame.surfarray.array2d(canvas.surface).transpose().tolist(), self.experiment.width, self.experiment.height)
+
+
+	def set_backdrop(self, backdrop):
+
 		"""<DOC>
-		Set backdrop image of Eyelink computer. For performance, it can be
-		useful sometimes to already prepare the image to send to the eyelink in
-		the prepare phase. This prepared image can be optionally supplied in
-		prepped_backdrop_image (a  3 dimensional list with hor-lines x ver-lines
-		x pixels) Otherwise, supplying the canvas is enough and this function
+		Set backdrop image of Eyelink computer. For better performance, it can be
+		useful to already convert the canvas to send to the eyelink in the prepare phase using eyelink.prepare_backdrop().
+		If speed is not an issue, you can also directly pass a openexp.canvas object and this function
 		will take care of the conversion
+
+		WARNING: this function can take between 10-50 ms to complete, depending on the resolution of the image
+		and the cpu power of your machine. Do not use during time critical phases of your experiment
 		
+		NOTE: The function will do nothing after drift_correction or start_recording has been called during a trial
+		make sure to set the actual backdrop before starting the eyelink measurements
+
 		Arguments:
-		canvas -- an openexp canvas
-		
-		Keyword arguments:
-		prepped_backdrop_image -- an image in the (list x list x tuple) format
-								  required by pylink
+		backdrop --
+		an openexp canvas
+		OR
+		a tuple representation (created with prepare_backdrop()) containing
+		1. (list) a numpy array2d.tolist() representation of the image
+		2. (int)the width of the image
+		3. (int)the height of the image
+
+		Returns:
+		(int) The amount of time in ms the function took to complete
 		</DOC>"""
 		
+		starttime = self.experiment.time()
+
+		# For now only the legacy backend will be supported
+		# Future releases should support all backends
 		if self.experiment.canvas_backend != 'legacy':
-			raise exceptions.runtime_error( \
-				'prepare_backdrop requires the legacy back-end')
-						
-		if not prepped_backdrop_image is None: 
-			if	type(prepped_backdrop_image) == list:
-				width = len(prepped_backdrop_image[0])
-				height = len(prepped_backdrop_image)
-				pylink.getEYELINK().bitmapBackdrop(width,height,prepped_backdrop_image,0,0,width,height,0,0,pylink.BX_MAXCONTRAST)
+			raise exceptions.runtime_error('set_backdrop for now requires the legacy back-end')
+
+		# backdrop argument needs to be a canvas or tuple object: if not raise an exception
+		if type(backdrop) not in [tuple, canvas]:
+			raise exceptions.runtime_error('Invalid backdrop argument: needs to be a openexp.canvas or a tuple(list,width,height) object')
+
+		# If backdrop argument is a canvas, first convert it to the required list representation
+		if type(backdrop) == canvas:
+			backdrop = self.prepare_backdrop(backdrop)
+
+		# If the backdrop argument is tuple containing the list representation, send it to the eyelink
+		# (also works for the canvas that just got converted)
+		if type(backdrop) == tuple:
+			# Check if tuple has correct format
+			if len(backdrop) != 3 or type(backdrop[0]) != list or type(backdrop[1]) != int or type(backdrop[2]) != int:
+				raise exceptions.runtime_error('Invalid tuple; needs to be (array2d list,width,height)')
 			else:
-				raise exceptions.runtime_error("Backdrop image has invalid format")
+				el = pylink.getEYELINK()
+
+				# "Forward" compatibility hack: should be removed after next API release of pylink!
+				# In the current unofficial version of pylink, the function that transfers a 2D array list representation
+				# to the host PC is called bitmap2DBackdrop. According to the dev team, this function will be integrated into the
+				# old bitmapBackdrop function  and the bitmap2DBackdrop function will disappear. The following check is to make
+				# sure the set_backdrop function will not break once bitmap2DBackdrop is removed from the next official pylink
+				
+				if hasattr(el,"bitmap2DBackdrop"):
+					send_backdrop = el.bitmap2DBackdrop
+				else:
+					send_backdrop = el.bitmapBackdrop
+							
+				img = backdrop[0]
+				width = backdrop[1]
+				height = backdrop[2]
+				send_backdrop(width,height,img,0,0,width,height,0,0,pylink.BX_MAXCONTRAST)
 		else:
-			backdrop = prepare_backdrop(canvas)
-			width = canvas.surface.get_width()
-			height = canvas.surface.get_height()		
-			pylink.getEYELINK().bitmapBackdrop(width,height,backdrop,0,0,width,height,0,0,pylink.BX_MAXCONTRAST)
+			raise exceptions.runtime_error('Unable to send backdrop')
+		return int(self.experiment.time() - starttime)
 		
 class libeyelink_dummy:
 
@@ -724,7 +772,7 @@ class libeyelink_dummy:
 		pass
 
 	def sample(self):
-		pass
+		return (0,0)
 
 	def wait_for_event(self, event):
 		pass
@@ -753,11 +801,11 @@ class libeyelink_dummy:
 		pygame.time.delay(100)
 		return pygame.time.get_ticks(), (0, 0)		
 		
-	def prepare_backdrop(self, canvas):	
+	def prepare_backdrop(self, canvas):
 		pass
-	
-	def set_backdrop(self, canvas, prepped_backdrop_image=None):
-		pass		
+
+	def set_backdrop(self, backdrop):
+		pass
 	
 class eyelink_graphics(custom_display):
 
@@ -1065,3 +1113,4 @@ class eyelink_graphics(custom_display):
 			self.pal.append((rf<<16) | (gf<<8) | (bf))
 			i = i+1		
 				
+
