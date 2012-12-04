@@ -291,7 +291,7 @@ class libeyelink:
 		self.send_command("heuristic_filter = ON")	
 		self.send_command("drift_correction_targets = %d %d" % pos)	
 		self.send_command("start_drift_correction data = 0 0 1 0")
-		pylink.msecDelay(50);
+		pylink.msecDelay(50)
 	
 		# Wait for a bit until samples start coming in (I think?)
 		if not pylink.getEYELINK().waitForBlockStart(100, 1, 0):
@@ -454,7 +454,7 @@ class libeyelink:
 		pylink.getEYELINK().receiveDataFile(self.data_file, self.data_file)
 		pylink.msecDelay(100)		
 		print "libeyelink: closing eyelink"
-		pylink.getEYELINK().close();
+		pylink.getEYELINK().close()
 		pylink.msecDelay(100)		
 	
 	def set_eye_used(self):
@@ -513,7 +513,7 @@ class libeyelink:
 		event -- eyelink event, like pylink.STARTSACC
 		
 		Returns:
-		the critical event as float_data
+		A tuple (timestamp, event). The event is in float_data format
 	
 		Exceptions:
 		Raises an exceptions.runtime_error on failure			
@@ -527,15 +527,15 @@ class libeyelink:
 		
 		t_0 = self.experiment.time()
 		while True:
-			d = 0;
+			d = 0
 			while d != event:
 				d = pylink.getEYELINK().getNextData()
 			# ignore d if its event occured before t_0:
 			float_data = pylink.getEYELINK().getFloatData()
 			if float_data.getTime() - self.tracker_display_delay > t_0:
-				break;
+				break
 		
-		return float_data;
+		return (float_data.getTime() - self.tracker_display_delay, float_data)
 	
 	def wait_for_saccade_start(self):
 
@@ -550,7 +550,7 @@ class libeyelink:
 		</DOC>"""
 	
 		d = self.wait_for_event(pylink.STARTSACC)
-		return d.getTime() - self.tracker_display_delay, d.getStartGaze()
+		return d[0], d[1].getStartGaze()
 	
 	def wait_for_saccade_end(self):
 
@@ -565,7 +565,7 @@ class libeyelink:
 		</DOC>"""
 	
 		d = self.wait_for_event(pylink.ENDSACC)
-		return d.getTime() - self.tracker_display_delay, d.getStartGaze(), d.getEndGaze()
+		return d[0], d[1].getStartGaze(), d[1].getEndGaze()
 	
 	def wait_for_fixation_start(self):
 
@@ -580,7 +580,7 @@ class libeyelink:
 		</DOC>"""
 	
 		d = self.wait_for_event(pylink.STARTFIX)		
-		return d.getTime() - self.tracker_display_delay, d.getStartGaze()
+		return d[0], d[1].getStartGaze()
 	
 	
 	def wait_for_fixation_end(self):
@@ -596,7 +596,7 @@ class libeyelink:
 		</DOC>"""
 	
 		d = self.wait_for_event(pylink.ENDFIX)	
-		return d.getTime() - self.tracker_display_delay, d.getStartGaze(), d.getEndGaze()
+		return d[0], d[1].getStartGaze(), d[1].getEndGaze()
 	
 	def wait_for_blink_start(self):
 
@@ -611,7 +611,7 @@ class libeyelink:
 		</DOC>"""
 
 		d = self.wait_for_event(pylink.STARTBLINK)	
-		return d.getTime() - self.tracker_display_delay
+		return d[0]
 	
 	def wait_for_blink_end(self):
 
@@ -626,7 +626,7 @@ class libeyelink:
 		</DOC>"""
 
 		d = self.wait_for_event(pylink.ENDBLINK)	
-		return d.getTime() - self.tracker_display_delay
+		return d[0]
 		
 	def prepare_backdrop(self, canvas):
 
@@ -640,10 +640,9 @@ class libeyelink:
 		canvas -- an openexp canvas
 
 		Returns:
-		A tuple with ((list) image in array2d format, (int) image width, (int) image height)
+		A tuple with in ((list) image in array2d format, (int) image width, (int) image height)
 		</DOC>"""
 
-		# Only works with legacy backend for now. Future releases should support all backends
 		if self.experiment.canvas_backend != 'legacy':
 			raise exceptions.runtime_error('prepare_backdrop requires the legacy back-end')
 
@@ -660,12 +659,10 @@ class libeyelink:
 
 		WARNING: this function can take between 10-50 ms to complete, depending on the resolution of the image
 		and the cpu power of your machine. Do not use during time critical phases of your experiment
-		
-		NOTE: The function will do nothing after drift_correction or start_recording has been called during a trial
-		make sure to set the actual backdrop before starting the eyelink measurements
 
 		Arguments:
 		backdrop --
+
 		an openexp canvas
 		OR
 		a tuple representation (created with prepare_backdrop()) containing
@@ -676,11 +673,10 @@ class libeyelink:
 		Returns:
 		(int) The amount of time in ms the function took to complete
 		</DOC>"""
-		
 		starttime = self.experiment.time()
 
 		# For now only the legacy backend will be supported
-		# Future releases should support all backends
+		# Future releases will support all backends
 		if self.experiment.canvas_backend != 'legacy':
 			raise exceptions.runtime_error('set_backdrop for now requires the legacy back-end')
 
@@ -697,28 +693,31 @@ class libeyelink:
 		if type(backdrop) == tuple:
 			# Check if tuple has correct format
 			if len(backdrop) != 3 or type(backdrop[0]) != list or type(backdrop[1]) != int or type(backdrop[2]) != int:
-				raise exceptions.runtime_error('Invalid tuple; needs to be (array2d list,width,height)')
+				raise exceptions.runtime_error('Invalid tuple; needs to be (array2d.image,width,height)')
 			else:
 				el = pylink.getEYELINK()
 
-				# "Forward" compatibility hack: should be removed after next API release of pylink!
+				# "Forward" compatibility
 				# In the current unofficial version of pylink, the function that transfers a 2D array list representation
-				# to the host PC is called bitmap2DBackdrop. According to the dev team, this function will be integrated into the
-				# old bitmapBackdrop function  and the bitmap2DBackdrop function will disappear. The following check is to make
-				# sure the set_backdrop function will not break once bitmap2DBackdrop is removed from the next official pylink
-				
+				# to the host PC is called bitmap2DBackdrop. According to the dev team, this function will be integrated with the
+				# old bitmapBackdop function again and the bitmap2DBackdrop function will disappear. The following check is to make
+				# sure the set_backdrop function will not break
+				"""
 				if hasattr(el,"bitmap2DBackdrop"):
 					send_backdrop = el.bitmap2DBackdrop
 				else:
 					send_backdrop = el.bitmapBackdrop
-							
+				"""
+				send_backdrop = el.bitmap2DBackdrop
+				
 				img = backdrop[0]
 				width = backdrop[1]
 				height = backdrop[2]
 				send_backdrop(width,height,img,0,0,width,height,0,0,pylink.BX_MAXCONTRAST)
+				print "backdrop sent!"
 		else:
 			raise exceptions.runtime_error('Unable to send backdrop')
-		return int(self.experiment.time() - starttime)
+		return int((self.experiment.time() - starttime)*1000)
 		
 class libeyelink_dummy:
 
