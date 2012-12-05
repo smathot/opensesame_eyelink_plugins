@@ -717,7 +717,7 @@ class libeyelink:
 				print "backdrop sent!"
 		else:
 			raise exceptions.runtime_error('Unable to send backdrop')
-		return int((self.experiment.time() - starttime)*1000)
+		return int(self.experiment.time() - starttime)
 		
 class libeyelink_dummy:
 
