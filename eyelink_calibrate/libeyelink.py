@@ -138,6 +138,7 @@ class libeyelink:
 		# Set link data. This specifies which data is sent through the link and thus can
 		# be used in gaze contingent displays
 		self.send_command("link_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,BUTTON")
+		self.send_command("link_event_data = GAZE,GAZERES,HREF,AREA,VELOCITY,STATUS")
 		if self.tracker_software_ver >= 4:
 			self.send_command("link_sample_data  = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS,HTARGET")
 		else:
@@ -149,8 +150,26 @@ class libeyelink:
 		if not self.connected():
 			raise exceptions.runtime_error("Failed to connect to the eyetracker")
 			
-		# get time difference between tracker and display pc
-		self.tracker_display_delay = pylink.getEYELINK().trackerTime() - self.experiment.time()
+		# store the time difference between tracker time and exp-time:
+		self.exp_eyelink_delay = pylink.getEYELINK().trackerTime() - self.experiment.time()
+		
+		# catch pylink bug: pre 1.0.0.28, calling getfloatData() on 
+		# start_saccade data returns scrambled events
+		# so compare current version to up-to-date version
+		cur_v = pylink.version.vernum 
+		utd_v = (1, 0, 0, 28)
+		
+		utd = True
+		for n in range( len(utd_v) ):
+			if cur_v[n] < utd_v[n]:
+				utd = False 
+			if utd == False or cur_v[n] > utd_v[n]:
+				break
+		
+		# if not  up to date, redefine wait_for_saccade_start
+		if not utd:
+			self.wait_for_saccade_start = self.__wait_for_saccade_start_pre_10028
+		
 	
 	def send_command(self, cmd):
 
@@ -229,6 +248,16 @@ class libeyelink:
 		self.cal_beep = beep
 		self.cal_target_size = target_size
 		pylink.getEYELINK().doTrackerSetup()
+	
+	def get_exp_eyelink_delay(self):
+		"""<DOC>
+		Retrieve difference between tracker time (as found in tracker timestamps) 
+		and experiment time.
+		
+		Returns:
+		tracker time minus experiment time
+		</DOC>"""
+		return self.exp_eyelink_delay
 	
 	def drift_correction(self, pos=None, fix_triggered=False):
 
@@ -513,7 +542,8 @@ class libeyelink:
 		event -- eyelink event, like pylink.STARTSACC
 		
 		Returns:
-		A tuple (timestamp, event). The event is in float_data format
+		A tuple (timestamp, event). 
+		The event is in float_data format. The timestamp is in experiment time
 	
 		Exceptions:
 		Raises an exceptions.runtime_error on failure			
@@ -532,10 +562,10 @@ class libeyelink:
 				d = pylink.getEYELINK().getNextData()
 			# ignore d if its event occured before t_0:
 			float_data = pylink.getEYELINK().getFloatData()
-			if float_data.getTime() - self.tracker_display_delay > t_0:
+			if float_data.getTime() - self.exp_eyelink_delay > t_0:
 				break
 		
-		return (float_data.getTime() - self.tracker_display_delay, float_data)
+		return ( float_data.getTime() - self.exp_eyelink_delay, float_data )
 	
 	def wait_for_saccade_start(self):
 
@@ -543,14 +573,25 @@ class libeyelink:
 		Waits for a saccade start
 	
 		Returns:
-		timestamp, start_pos
+		timestamp in experiment time, start_pos
 		
 		Exceptions:
 		Raises an exceptions.runtime_error on failure			
 		</DOC>"""
 	
-		d = self.wait_for_event(pylink.STARTSACC)
-		return d[0], d[1].getStartGaze()
+		t, d = self.wait_for_event(pylink.STARTSACC)
+		return t, d.getStartGaze()
+	
+	def __wait_for_saccade_start_pre_10028(self):
+		"""
+		Waits for a saccade start, see wait_for_saccade_start
+		
+		This implementation catches a pylink bug that existed before pylink 1.0.0.28
+		"""
+		
+		t, d = self.wait_for_event(pylink.STARTSACC)
+		return t, ( d.getStartGaze()[1], d.getHref()[0] )
+		
 	
 	def wait_for_saccade_end(self):
 
@@ -558,14 +599,14 @@ class libeyelink:
 		Waits for a saccade end
 	
 		Returns:
-		timestamp, start_pos, end_pos
+		timestamp in experiment time, start_pos, end_pos
 		
 		Exceptions:
 		Raises an exceptions.runtime_error on failure			
 		</DOC>"""
 	
-		d = self.wait_for_event(pylink.ENDSACC)
-		return d[0], d[1].getStartGaze(), d[1].getEndGaze()
+		t, d = self.wait_for_event(pylink.ENDSACC)
+		return t, d.getStartGaze(), d.getEndGaze()
 	
 	def wait_for_fixation_start(self):
 
@@ -573,14 +614,14 @@ class libeyelink:
 		Waits for a fixation start
 	
 		Returns:
-		timestamp, start_pos
+		timestamp (in experiment time), start_pos
 		
 		Exceptions:
 		Raises an exceptions.runtime_error on failure			
 		</DOC>"""
 	
-		d = self.wait_for_event(pylink.STARTFIX)		
-		return d[0], d[1].getStartGaze()
+		t, d = self.wait_for_event(pylink.STARTFIX)		
+		return t, d.getStartGaze()
 	
 	
 	def wait_for_fixation_end(self):
@@ -589,14 +630,14 @@ class libeyelink:
 		Waits for a fixation end
 	
 		Returns:
-		timestamp, start_pos, end_pos
+		timestamp (in experiment time), start_pos, end_pos
 		
 		Exceptions:
 		Raises an exceptions.runtime_error on failure			
 		</DOC>"""
 	
-		d = self.wait_for_event(pylink.ENDFIX)	
-		return d[0], d[1].getStartGaze(), d[1].getEndGaze()
+		t, d = self.wait_for_event(pylink.ENDFIX)	
+		return t, d.getStartGaze(), d.getEndGaze()
 	
 	def wait_for_blink_start(self):
 
@@ -604,14 +645,14 @@ class libeyelink:
 		Waits for a blink start
 	
 		Returns:
-		timestamp
+		timestamp (in experiment time)
 		
 		Exceptions:
 		Raises an exceptions.runtime_error on failure			
 		</DOC>"""
 
-		d = self.wait_for_event(pylink.STARTBLINK)	
-		return d[0]
+		t, d = self.wait_for_event(pylink.STARTBLINK)	
+		return t
 	
 	def wait_for_blink_end(self):
 
@@ -619,14 +660,14 @@ class libeyelink:
 		Waits for a blink end
 	
 		Returns:
-		timestamp
+		timestamp (in experiment time)
 		
 		Exceptions:
 		Raises an exceptions.runtime_error on failure			
 		</DOC>"""
 
-		d = self.wait_for_event(pylink.ENDBLINK)	
-		return d[0]
+		t, d = self.wait_for_event(pylink.ENDBLINK)	
+		return t
 		
 	def prepare_backdrop(self, canvas):
 
@@ -701,23 +742,21 @@ class libeyelink:
 				# In the current unofficial version of pylink, the function that transfers a 2D array list representation
 				# to the host PC is called bitmap2DBackdrop. According to the dev team, this function will be integrated with the
 				# old bitmapBackdop function again and the bitmap2DBackdrop function will disappear. The following check is to make
-				# sure the set_backdrop function will not break
-				"""
+				# sure the set_backdrop function will not break				
 				if hasattr(el,"bitmap2DBackdrop"):
 					send_backdrop = el.bitmap2DBackdrop
 				else:
 					send_backdrop = el.bitmapBackdrop
-				"""
+				
 				send_backdrop = el.bitmap2DBackdrop
 				
 				img = backdrop[0]
 				width = backdrop[1]
 				height = backdrop[2]
 				send_backdrop(width,height,img,0,0,width,height,0,0,pylink.BX_MAXCONTRAST)
-				print "backdrop sent!"
 		else:
 			raise exceptions.runtime_error('Unable to send backdrop')
-		return int((self.experiment.time() - starttime)*1000)
+		return self.experiment.time() - starttime
 		
 class libeyelink_dummy:
 
@@ -1112,4 +1151,5 @@ class eyelink_graphics(custom_display):
 			self.pal.append((rf<<16) | (gf<<8) | (bf))
 			i = i+1		
 				
+
 
