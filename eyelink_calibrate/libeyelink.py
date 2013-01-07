@@ -88,7 +88,8 @@ class libeyelink:
 			try:
 				_eyelink = pylink.EyeLink()
 			except Exception as e:
-				raise exceptions.runtime_error("Failed to connect to the tracker: %s" % e)
+				raise exceptions.runtime_error( \
+					"Failed to connect to the tracker: %s" % e)
 
 			graphics_env = eyelink_graphics(self.experiment, _eyelink)
 			pylink.openGraphicsEx(graphics_env)
@@ -98,7 +99,8 @@ class libeyelink:
 		pylink.getEYELINK().setOfflineMode()
 
 		# Notify the eyelink of the display resolution
-		self.send_command("screen_pixel_coords =  0 0 %d %d" % (self.resolution[0], self.resolution[1]))
+		self.send_command("screen_pixel_coords =  0 0 %d %d" % ( \
+			self.resolution[0], self.resolution[1]))
 
 		# Determine the software version of the tracker
 		self.tracker_software_ver = 0
@@ -106,58 +108,79 @@ class libeyelink:
 		if self.eyelink_ver == 3:
 			tvstr = pylink.getEYELINK().getTrackerVersionString()
 			vindex = tvstr.find("EYELINK CL")
-			self.tracker_software_ver = int(float(tvstr[(vindex + len("EYELINK CL")):].strip()))
+			self.tracker_software_ver = int(float(tvstr[(vindex + \
+				len("EYELINK CL")):].strip()))
 
-		# Set some configuration stuff (not sure what the parser and gazemap mean)
+		# Some configuration stuff (not sure what the parser and gazemap mean)
 		if self.eyelink_ver >= 2:
 			self.send_command("select_parser_configuration 0")
 			if self.eyelink_ver == 2: #turn off scenelink camera stuff
 				self.send_command("scene_camera_gazemap = NO")
 		else:
-			self.send_command("saccade_velocity_threshold = %d" % self.saccade_velocity_threshold)
-			self.send_command("saccade_acceleration_threshold = %s" % self.saccade_acceleration_threshold)
+			self.send_command("saccade_velocity_threshold = %d" % \
+				self.saccade_velocity_threshold)
+			self.send_command("saccade_acceleration_threshold = %s" % \
+				self.saccade_acceleration_threshold)
 
-		# Set EDF file contents. This specifies which data is written to the EDF file.
-		self.send_command("file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON")
+		# Set EDF file contents
+		self.send_command( \
+			"file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON")
 		if self.tracker_software_ver >= 4:
-			self.send_command("file_sample_data  = LEFT,RIGHT,GAZE,AREA,GAZERES,STATUS,HTARGET")
+			self.send_command( \
+				"file_sample_data  = LEFT,RIGHT,GAZE,AREA,GAZERES,STATUS,HTARGET")
 		else:
-			self.send_command("file_sample_data  = LEFT,RIGHT,GAZE,AREA,GAZERES,STATUS")
+			self.send_command( \
+				"file_sample_data  = LEFT,RIGHT,GAZE,AREA,GAZERES,STATUS")
 
-		# Set link data. This specifies which data is sent through the link and thus can
-		# be used in gaze contingent displays
-		self.send_command("link_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,BUTTON")
-		self.send_command("link_event_data = GAZE,GAZERES,HREF,AREA,VELOCITY,STATUS")
+		# Set link data. This specifies which data is sent through the link and
+		# thus be used in gaze contingent displays
+		self.send_command( \
+			"link_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,BUTTON")
+		self.send_command( \
+			"link_event_data = GAZE,GAZERES,HREF,AREA,VELOCITY,STATUS")
 		if self.tracker_software_ver >= 4:
-			self.send_command("link_sample_data  = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS,HTARGET")
+			self.send_command( \
+				"link_sample_data  = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS,HTARGET")
 		else:
-			self.send_command("link_sample_data  = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS")
+			self.send_command( \
+				"link_sample_data  = LEFT,RIGHT,GAZE,GAZERES,AREA,STATUS")
 
-		# Not sure what this means. Maybe the button that is used to end drift correction?
+		# Not sure what this means. Maybe the button that is used to end drift
+		# correction?
 		self.send_command("button_function 5 'accept_target_fixation'")
 
+		# Make sure that we are connected to the eyelink before we start
+		# further communication
 		if not self.connected():
-			raise exceptions.runtime_error("Failed to connect to the eyetracker")
+			raise exceptions.runtime_error( \
+				"Failed to connect to the eyetracker")
 
 		# store the time difference between tracker time and exp-time:
-		self.exp_eyelink_delay = pylink.getEYELINK().trackerTime() - self.experiment.time()
+		self.exp_eyelink_delay = pylink.getEYELINK().trackerTime() \
+			- self.experiment.time()
 
+		# TODO: The code below potentially fixes a bug, but - pending a more
+		# thorough understanding - has been disabled to avoid regressions and
+		# other problems. Discussions on this issue can be found here:
+		# <http://forum.cogsci.nl/index.php?p=/discussion/comment/1161>
+		# <https://www.sr-support.com/showthread.php?3208-Event-data-from-the-link-buffer&p=11979>
+		#
 		# catch pylink bug: pre 1.0.0.28, calling getfloatData() on
-		# start_saccade data returns scrambled events
-		# so compare current version to up-to-date version
-		cur_v = pylink.version.vernum
-		utd_v = (1, 0, 0, 28)
+		# start_saccade data returns scrambled events so compare current
+		# version to up-to-date version
+		#cur_v = pylink.version.vernum
+		#utd_v = (1, 0, 0, 28)
 
-		utd = True
-		for n in range( len(utd_v) ):
-			if cur_v[n] < utd_v[n]:
-				utd = False
-			if utd == False or cur_v[n] > utd_v[n]:
-				break
+		#utd = True
+		#for n in range( len(utd_v) ):
+			#if cur_v[n] < utd_v[n]:
+				#utd = False
+			#if utd == False or cur_v[n] > utd_v[n]:
+				#break
 
-		# if not  up to date, redefine wait_for_saccade_start
-		if not utd:
-			self.wait_for_saccade_start = self.__wait_for_saccade_start_pre_10028
+		## if not  up to date, redefine wait_for_saccade_start
+		#if not utd:
+			#self.wait_for_saccade_start = self.__wait_for_saccade_start_pre_10028
 
 	def send_command(self, cmd):
 
