@@ -15,12 +15,7 @@ You should have received a copy of the GNU General Public License
 along with OpenSesame.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-# We don't need OpenSesame for standalone demo mode
-if __name__ != "__main__":
-	from libopensesame import exceptions
-
-# Don't crash if we fail to load pylink, because we
-# may still use dummy mode.
+# Don't crash if we fail to load pylink, because we may still use dummy mode.
 try:
 	import pylink
 	custom_display = pylink.EyeLinkCustomDisplay
@@ -41,12 +36,6 @@ try:
 	import Image
 except:
 	from PIL import Image
-
-# Don't fail if psychopy isn't available, because we may use others backends
-try:
-	from psychopy import visual
-except:
-	pass
 
 _eyelink = None
 
@@ -510,29 +499,64 @@ class libeyelink:
 	def sample(self):
 
 		"""<DOC>
-		Gets the most recent gaze sample from the eyelink
+		Gets the most recent gaze sample
 
 		Returns:
-		A tuple (x, y) containing the coordinates of the sample
+		A tuple (x, y) containing the coordinates of the sample. The value
+		(-1, -1) indicates missing data.
 
 		Exceptions:
 		Raises an exceptions.runtime_error on failure
 		</DOC>"""
 
 		if not self.recording:
-			raise exceptions.runtime_error("Please start recording before collecting eyelink data")
+			raise exceptions.runtime_error( \
+				"Please start recording before collecting eyelink data")
 
 		if self.eye_used == None:
 			self.set_eye_used()
 
 		s = pylink.getEYELINK().getNewestSample()
-		if s != None:
-			if self.eye_used == self.right_eye and s.isRightSample():
-				gaze = s.getRightEye().getGaze()
-			elif self.eye_used == self.left_eye and s.isLeftSample():
-				gaze = s.getLeftEye().getGaze()
-
+		if s == None:
+			gaze = -1, -1
+		elif self.eye_used == self.right_eye and s.isRightSample():
+			gaze = s.getRightEye().getGaze()
+		elif self.eye_used == self.left_eye and s.isLeftSample():
+			gaze = s.getLeftEye().getGaze()
+		else:
+			gaze = -1, -1
 		return gaze
+
+	def pupil_size(self):
+
+		"""<DOC>
+		Gets the most recent pupil size
+
+		Returns:
+		A float corresponding to the pupil size (in arbitrary units). The value
+		-1 indicates missing data.
+
+		Exceptions:
+		Raises an exceptions.runtime_error on failure
+		</DOC>"""
+
+		if not self.recording:
+			raise exceptions.runtime_error( \
+				"Please start recording before collecting eyelink data")
+
+		if self.eye_used == None:
+			self.set_eye_used()
+
+		s = pylink.getEYELINK().getNewestSample()
+		if s == None:
+			ps = -1
+		elif self.eye_used == self.right_eye and s.isRightSample():
+			ps = s.getRightEye().getPupilSize()
+		elif self.eye_used == self.left_eye and s.isLeftSample():
+			ps = s.getLeftEye().getPupilSize()
+		else:
+			ps = -1
+		return ps
 
 	def wait_for_event(self, event):
 
@@ -812,7 +836,10 @@ class libeyelink_dummy:
 		pass
 
 	def sample(self):
-		return (0,0)
+		return 0,0
+
+	def pupil_size(self):
+		return 0
 
 	def wait_for_event(self, event):
 		pass
@@ -1127,7 +1154,7 @@ class eyelink_graphics(custom_display):
 
 		if line == totlines:
 			bufferv = self.imagebuffer.tostring()
-			img =Image.new("RGBX", self.size)
+			img = Image.new("RGBX", self.size)
 			img.fromstring(bufferv)
 			img = img.resize(self.size)
 			img = pygame.image.fromstring(img.tostring(), self.size, "RGBX")
