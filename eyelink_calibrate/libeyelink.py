@@ -28,6 +28,7 @@ from openexp.keyboard import keyboard
 from openexp.mouse import mouse
 from openexp.canvas import canvas
 from openexp.synth import synth
+from libopensesame import exceptions
 import os.path
 import array
 import math
