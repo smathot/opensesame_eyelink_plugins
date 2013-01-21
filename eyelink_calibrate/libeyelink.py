@@ -270,6 +270,7 @@ class libeyelink:
 		return pylink.getEYELINK().trackerTime() \
 					- self.experiment.time()
 
+
 	def drift_correction(self, pos=None, fix_triggered=False):
 
 		"""<DOC>
@@ -608,10 +609,17 @@ class libeyelink:
 				d = pylink.getEYELINK().getNextData()
 			# ignore d if its event occured before t_0:
 			float_data = pylink.getEYELINK().getFloatData()
+<<<<<<< HEAD
 			if float_data.getTime() - self.get_eyelink_clock_async() > t_0:
 				break
 
 		return float_data.getTime() - self.get_eyelink_clock_async(), float_data
+=======
+			if float_data.getTime() - self.eyelink_clock_async > t_0:
+				break
+
+		return ( float_data.getTime() - self.eyelink_clock_async, float_data )
+>>>>>>> upstream/master
 
 	def wait_for_saccade_start(self):
 
@@ -1201,6 +1209,9 @@ class eyelink_graphics(custom_display):
 			self.pal.append((rf<<16) | (gf<<8) | (bf))
 			i = i+1
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> upstream/master
 
 
