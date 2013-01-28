@@ -156,10 +156,6 @@ class libeyelink:
 			raise exceptions.runtime_error( \
 				"Failed to connect to the eyetracker")
 
-		# store the time difference between tracker time and exp-time:
-		self.eyelink_clock_async = pylink.getEYELINK().trackerTime() \
-			- self.experiment.time()
-
 		# TODO: The code below potentially fixes a bug, but - pending a more
 		# thorough understanding - has been disabled to avoid regressions and
 		# other problems. Discussions on this issue can be found here:
@@ -271,7 +267,8 @@ class libeyelink:
 		tracker time minus experiment time
 		</DOC>"""
 
-		return self.eyelink_clock_async
+		return pylink.getEYELINK().trackerTime() \
+					- self.experiment.time()
 
 	def drift_correction(self, pos=None, fix_triggered=False):
 
@@ -611,11 +608,10 @@ class libeyelink:
 				d = pylink.getEYELINK().getNextData()
 			# ignore d if its event occured before t_0:
 			float_data = pylink.getEYELINK().getFloatData()
-
-			if float_data.getTime() - self.eyelink_clock_async > t_0:
+			if float_data.getTime() - self.get_eyelink_clock_async() > t_0:
 				break
 
-		return ( float_data.getTime() - self.eyelink_clock_async, float_data )
+		return float_data.getTime() - self.get_eyelink_clock_async(), float_data
 
 	def wait_for_saccade_start(self):
 
@@ -1204,5 +1200,7 @@ class eyelink_graphics(custom_display):
 			bf = int(r[i])
 			self.pal.append((rf<<16) | (gf<<8) | (bf))
 			i = i+1
+
+
 
 
