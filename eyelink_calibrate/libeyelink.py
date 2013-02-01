@@ -106,7 +106,7 @@ class libeyelink:
 		# Optionally force drift correction. For some reason this must be done
 		# as (one of) the first thingsm otherwise a segmentation fault occurs.
 		if force_drift_correct:
-			self.send_command('drift_correct_cr_disable = OFF')									
+			self.send_command('driftcorrect_cr_disable = OFF')									
 			
 		pylink.getEYELINK().openDataFile(self.data_file)
 		pylink.flushGetkeyQueue()
