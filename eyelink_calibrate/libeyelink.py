@@ -211,7 +211,13 @@ class libeyelink:
 		Arguments:
 		msg -- the message to be logged
 		</DOC>"""
-
+		
+		# sendMessage() is not Unicode safe, so we need to strip all Unicode
+		# characters from the message
+		if type(msg) == unicode:
+			msg = msg.encode('ascii','ignore')
+		if type(msg) == str:
+			msg = msg.decode('ascii','ignore')
 		pylink.getEYELINK().sendMessage(msg)
 
 	def log_var(self, var, val):
