@@ -47,6 +47,7 @@ class eyelink_calibrate(item.item):
 		self.sacc_acc_thresh = 9500
 		self.cal_target_size = 16
 		self.cal_beep = 'yes'
+		self.force_drift_correct = 'no'
 
 		# This options makes OpenSesame restart automatically after each session,
 		# but this is not neessary anymore
@@ -91,7 +92,12 @@ class eyelink_calibrate(item.item):
 
 			print "eyelink_calibrate(): logging tracker data as %s" % data_file
 			debug.msg("loading libeyelink")
-			self.experiment.eyelink = libeyelink.libeyelink(self.experiment, (self.get("width"), self.get("height")), data_file = data_file, saccade_velocity_threshold = self.get("sacc_vel_thresh"), saccade_acceleration_threshold = self.get("sacc_acc_thresh"))
+			self.experiment.eyelink = libeyelink.libeyelink(self.experiment, \
+				(self.get("width"), self.get("height")), data_file=data_file, \
+				saccade_velocity_threshold=self.get("sacc_vel_thresh"), \
+				saccade_acceleration_threshold=self.get("sacc_acc_thresh"), \
+				force_drift_correct=self.get('force_drift_correct')== \
+				'yes')
 			self.experiment.cleanup_functions.append(self.close)
 			if self.get("restart") == "Yes":
 				self.experiment.restart = True
@@ -167,9 +173,15 @@ class qteyelink_calibrate(eyelink_calibrate, qtplugin.qtplugin):
 		if hasattr(self, 'add_checkbox_control'):
 			self.add_checkbox_control("cal_beep", "Calibration beep", \
 				tooltip = "Indicates whether a beep sounds when the calibration target jumps")
+			self.add_checkbox_control("force_drift_correct", \
+				"Enable drift correction if disabled (Eyelink 1000)", \
+				tooltip = "Indicates whether drift correction should be enabled, if it is disabled in the Eyelink configuration.")
 		else:
 			self.add_combobox_control("cal_beep", "Calibration beep", ['yes', 'no'], \
 				tooltip = "Indicates whether a beep sounds when the calibration target jumps")
+			self.add_combobox_control("force_drift_correct", \
+				"Enable drift correction if disabled (Eyelink 1000)", ['yes', 'no'], \
+				tooltip = "Indicates whether drift correction should be enabled, if it is disabled in the Eyelink configuration.")				
 		self.add_spinbox_control("cal_target_size", "Calibration target size", 0, 256,
 			tooltip = "The size of the calibration target in pixels")
 		self.add_line_edit_control("sacc_vel_thresh", "Saccade velocity threshold", default = self.get("sacc_vel_thresh"), \
