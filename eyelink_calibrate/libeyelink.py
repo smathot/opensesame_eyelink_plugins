@@ -28,6 +28,7 @@ from openexp.keyboard import keyboard
 from openexp.mouse import mouse
 from openexp.canvas import canvas
 from openexp.synth import synth
+from openexp.exceptions import response_error
 from libopensesame import exceptions
 import os.path
 import array
@@ -73,7 +74,7 @@ class libeyelink:
 		</DOC>"""
 
 		global _eyelink
-
+		experiment.eyelink_esc_pressed = False
 		stem, ext = os.path.splitext(data_file)
 		if len(stem) > 8 or len(ext) > 4:
 			raise exceptions.runtime_error("The Eyelink cannot handle filenames longer than 8 characters (plus .EDF extension)")
@@ -308,7 +309,8 @@ class libeyelink:
 		Exceptions:
 		Raises an exceptions.runtime_error on error
 		</DOC>"""
-
+		
+		self.experiment.eyelink_esc_pressed = False
 		if self.recording:
 			raise exceptions.runtime_error("Trying to do drift correction after recording has started")
 
@@ -318,21 +320,24 @@ class libeyelink:
 		if pos == None:
 			pos = self.resolution[0] / 2, self.resolution[1] / 2
 
-		while True:
-			if not self.connected():
-				raise exceptions.runtime_error("The eyelink is not connected")
-			try:
-				# Params: x, y, draw fix, allow_setup
-				error = pylink.getEYELINK().doDriftCorrect(pos[0], pos[1], 0, 1)
-				if error != 27:
-					print "libeyelink.drift_correction(): success"
-					return True
-				else:
-					print "libeyelink.drift_correction(): escape pressed"
-					return False
-			except:
-				print "libeyelink.drift_correction(): try again"
+		# ensure eyelink connection before attempting DC
+		if not self.connected():
+			raise exceptions.runtime_error("The eyelink is not connected")
+
+		# attempt drift correction
+		try:
+			# Params: x, y, draw fix, allow_setup
+			print 'attempting drift correct...'
+			error = pylink.getEYELINK().doDriftCorrect(pos[0], pos[1], 0, 0)
+			if error != 27: # successful DC
+				print "libeyelink.drift_correction(): success"
+				return True
+			else: # aborted by Esc or Q
+				print "libeyelink.drift_correction(): escape pressed"
 				return False
+		except: # drift correction failed
+			print "libeyelink.drift_correction(): try again"
+			return False
 
 	def prepare_drift_correction(self, pos):
 
@@ -396,10 +401,18 @@ class libeyelink:
 		while len(lx) < min_samples:
 
 			# Pressing escape enters the calibration screen
-			if my_keyboard.get_key()[0] != None:
+			try:
+				key,time = my_keyboard.get_key()
+			except response_error:
+				self.experiment.eyelink_esc_pressed = True
 				self.recording = False
-				print "libeyelink.fix_triggered_drift_correction(): 'q' pressed"
 				return False
+			else:
+				if key != None: # i.e. 'q' was pressed
+					self.recording = False
+					print "libeyelink.fix_triggered_drift_correction(): 'q' pressed"
+					return False
+			
 
 			# Collect a sample
 			x, y = self.sample()
@@ -482,7 +495,6 @@ class libeyelink:
 		# Wait for a bit until samples start coming in (I think?)
 		if not pylink.getEYELINK().waitForBlockStart(100, 1, 0):
 			raise exceptions.runtime_error("Failed to start recording (waitForBlockStart error)")
-
 
 	def stop_recording(self):
 
@@ -658,7 +670,6 @@ class libeyelink:
 		t, d = self.wait_for_event(pylink.STARTSACC)
 		return t, ( d.getStartGaze()[1], d.getHref()[0] )
 
-
 	def wait_for_saccade_end(self):
 
 		"""<DOC>
@@ -688,7 +699,6 @@ class libeyelink:
 
 		t, d = self.wait_for_event(pylink.STARTFIX)
 		return t, d.getStartGaze()
-
 
 	def wait_for_fixation_end(self):
 
@@ -735,6 +745,37 @@ class libeyelink:
 		t, d = self.wait_for_event(pylink.ENDBLINK)
 		return t
 
+	def confirm_abort_experiment(self):
+		"""
+		Asks for confirmation before aborting the experiment. 
+		Displays a confirmation screen, collects the response, and acts accordingly
+
+		Raises a response_error upon confirmation
+
+		"""
+		# Display the confirmation screen
+		conf_canvas = canvas(self.experiment)
+		conf_kb = keyboard(self.experiment, timeout = None)
+		yc = conf_canvas.ycenter()
+		ld = 40
+		conf_canvas.clear()
+		conf_canvas.text("Really abort experiment?", y = yc - 3 * ld)
+		conf_canvas.text("Hit 'Y' to abort, ", y = yc - 0.5 * ld)
+		conf_canvas.text("Hit any other key or wait 5s to go to setup, ", y = yc + 0.5 * ld)
+		conf_canvas.show()
+
+		# process the response:
+		try:
+			key, time = conf_kb.get_key(timeout = 5000)
+		except:
+			return False
+
+		# if confirmation, close experiment
+		if key == 'y':
+			exceptions.runtime_error("The experiment was aborted")
+		else:
+			return False
+
 	def prepare_backdrop(self, canvas):
 
 		"""<DOC>
@@ -755,9 +796,8 @@ class libeyelink:
 
 		return (pygame.surfarray.array2d(canvas.surface).transpose().tolist(), self.experiment.width, self.experiment.height)
 
-
 	def set_backdrop(self, backdrop):
-
+		
 		"""<DOC>
 		Set backdrop image of Eyelink computer. For better performance, it can be
 		useful to already convert the canvas to send to the eyelink in the prepare phase using eyelink.prepare_backdrop().
@@ -955,6 +995,7 @@ class eyelink_graphics(custom_display):
 
 		self.set_tracker(tracker)
 		self.last_mouse_state = -1
+		self.experiment.eyelink_esc_pressed = False
 
 	def set_tracker(self, tracker):
 
@@ -1102,15 +1143,11 @@ class eyelink_graphics(custom_display):
 		"""
 
 		try:
-			_key, time = self.my_keyboard.get_key()
+			key, time = self.my_keyboard.get_key()
+		except response_error:
+			key = 'escape'
 		except:
 			return None
-
-		if _key == None:
-			return None
-
-		ky = []
-		key = self.my_keyboard.to_chr(_key)
 
 		if key == "return":
 			keycode = pylink.ENTER_KEY
@@ -1136,6 +1173,10 @@ class eyelink_graphics(custom_display):
 			keycode = pylink.CURS_LEFT
 		elif key == "right":
 			keycode = pylink.CURS_RIGHT
+		elif key == "escape": # escape does the same as 'q', but also marks esc_pressed
+			self.experiment.eyelink_esc_pressed = True
+			keycode = pylink.ESC_KEY
+			self.state = None
 		else:
 			keycode = 0
 
@@ -1219,7 +1260,3 @@ class eyelink_graphics(custom_display):
 			bf = int(r[i])
 			self.pal.append((rf<<16) | (gf<<8) | (bf))
 			i = i+1
-
-
-
-
