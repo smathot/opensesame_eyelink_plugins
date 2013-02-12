@@ -89,7 +89,7 @@ class eyelink_drift_correct(item.item):
 			x += self.get("width") / 2
 			y += self.get("height") / 2
 
-		# Draw a fixation dot
+		# Draw a fixation cross
 		c = openexp.canvas.canvas(self.experiment, self.get("background"), self.get("foreground"))
 		c.set_penwidth(3)
 		c.line(x - 5, y, x + 5, y)
@@ -97,6 +97,13 @@ class eyelink_drift_correct(item.item):
 		c.show()
 		# Do drift correction
 		while not self.experiment.eyelink.drift_correction( (x, y), self.get("mode") == self._mode_auto):
+			# if esc was pressed, ask for confirmation to abort:
+			if self.experiment.eyelink_esc_pressed: 
+				self.experiment.eyelink.confirm_abort_experiment() # raises an exception if confirmed
+				
+				# if not confirmed, set esc_pressed flag back to false
+				self.experiment.eyelink_esc_pressed = False
+			
 			self.experiment.eyelink.calibrate()
 			c.show()
 
