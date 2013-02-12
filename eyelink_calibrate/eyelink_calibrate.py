@@ -131,8 +131,14 @@ class eyelink_calibrate(item.item):
 
 		self.set_item_onset()
 
-		self.experiment.eyelink.calibrate(beep=self.get('cal_beep')=='yes', \
-			target_size=self.get('cal_target_size'))
+		while True:
+			self.experiment.eyelink.calibrate(beep=self.get('cal_beep')== \
+				'yes', target_size=self.get('cal_target_size'))
+			if self.experiment.eyelink_esc_pressed: 
+				self.experiment.eyelink.confirm_abort_experiment()
+				self.experiment.eyelink_esc_pressed = False		
+			else:
+				break
 
 		# Report success
 		return True

@@ -752,32 +752,37 @@ class libeyelink:
 
 	def confirm_abort_experiment(self):
 		"""
-		Asks for confirmation before aborting the experiment. 
-		Displays a confirmation screen, collects the response, and acts accordingly
+		Asks for confirmation before aborting the experiment. Displays a
+		confirmation screen, collects the response, and acts accordingly
 
+		Exceptions:
 		Raises a response_error upon confirmation
 
+		Returns:
+		False if no confirmation was given
 		"""
+		
 		# Display the confirmation screen
 		conf_canvas = canvas(self.experiment)
-		conf_kb = keyboard(self.experiment, timeout = None)
+		conf_kb = keyboard(self.experiment, timeout=None)
 		yc = conf_canvas.ycenter()
 		ld = 40
 		conf_canvas.clear()
 		conf_canvas.text("Really abort experiment?", y = yc - 3 * ld)
 		conf_canvas.text("Hit 'Y' to abort, ", y = yc - 0.5 * ld)
-		conf_canvas.text("Hit any other key or wait 5s to go to setup, ", y = yc + 0.5 * ld)
+		conf_canvas.text("Hit any other key or wait 5s to go to setup, ", \
+			y = yc+0.5*ld)
 		conf_canvas.show()
 
 		# process the response:
 		try:
-			key, time = conf_kb.get_key(timeout = 5000)
+			key, time = conf_kb.get_key(timeout=5000)
 		except:
 			return False
 
 		# if confirmation, close experiment
 		if key == 'y':
-			exceptions.runtime_error("The experiment was aborted")
+			raise exceptions.runtime_error("The experiment was aborted")
 		else:
 			return False
 
@@ -1152,6 +1157,7 @@ class eyelink_graphics(custom_display):
 			key, time = self.my_keyboard.get_key()
 		except response_error:
 			key = 'escape'
+			self.experiment.eyelink_esc_pressed = True
 		except:
 			return None
 		
@@ -1160,7 +1166,7 @@ class eyelink_graphics(custom_display):
 			self.state = None
 		elif key == "space":
 			keycode = ord(" ")
-		elif key == "q":
+		elif key in ["q", "escape"]:
 			keycode = pylink.ESC_KEY
 			self.state = None
 		elif key == "c":
