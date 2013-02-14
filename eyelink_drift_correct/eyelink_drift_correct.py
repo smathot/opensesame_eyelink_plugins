@@ -98,11 +98,7 @@ class eyelink_drift_correct(item.item):
 		# Do drift correction
 		while not self.experiment.eyelink.drift_correction( (x, y), \
 			self.get("mode") == self._mode_auto):
-			# if esc was pressed, ask for confirmation to abort:
-			if self.experiment.eyelink_esc_pressed: 
-				self.experiment.eyelink.confirm_abort_experiment()
-				# if not confirmed, set esc_pressed flag back to false
-				self.experiment.eyelink_esc_pressed = False			
+			
 			self.experiment.eyelink.calibrate()
 			c.show()
 
