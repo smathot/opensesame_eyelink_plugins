@@ -277,7 +277,16 @@ class libeyelink:
 
 		self.cal_beep = beep
 		self.cal_target_size = target_size
-		pylink.getEYELINK().doTrackerSetup()
+
+		# attempt calibrate; confirm abort when esc pressed
+		while True:
+			pylink.getEYELINK().doTrackerSetup()
+			if not self.experiment.eyelink_esc_pressed: 
+				break
+			else:
+				self.confirm_abort_experiment()
+				self.experiment.eyelink_esc_pressed = False
+
 
 	def get_eyelink_clock_async(self):
 
@@ -296,7 +305,8 @@ class libeyelink:
 
 		"""<DOC>
 		Performs drift correction and falls back to the calibration screen if
-		necessary
+		necessary. Pressing the 'escape' key during drift-correction will not 
+		immediately abort the experiment, but will ask for confirmation first.
 
 		Keyword arguments:
 		pos -- the coordinate (x,y tuple) of the drift correction dot or None
@@ -318,28 +328,7 @@ class libeyelink:
 
 		if fix_triggered:
 			return self.fix_triggered_drift_correction(pos)
-
-		if pos == None:
-			pos = self.resolution[0] / 2, self.resolution[1] / 2
-
-		# ensure eyelink connection before attempting DC
-		if not self.connected():
-			raise exceptions.runtime_error("The eyelink is not connected")
-
-		# attempt drift correction
-		try:
-			# Params: x, y, draw fix, allow_setup
-			print 'attempting drift correct...'
-			error = pylink.getEYELINK().doDriftCorrect(pos[0], pos[1], 0, 0)
-			if error != 27: # successful DC
-				print "libeyelink.drift_correction(): success"
-				return True
-			else: # aborted by Esc or Q
-				print "libeyelink.drift_correction(): escape pressed"
-				return False
-		except: # drift correction failed
-			print "libeyelink.drift_correction(): try again"
-			return False
+		return self.manual_drift_correction(pos)
 
 	def prepare_drift_correction(self, pos):
 
@@ -366,9 +355,10 @@ class libeyelink:
 	def fix_triggered_drift_correction(self, pos=None, min_samples=30, max_dev=60, reset_threshold=10):
 
 		"""<DOC>
-		Performs fixation triggered drift correction and falls back to the
-		calibration screen if necessary. You can return to the set-up screen by
-		pressing the 'q' key.
+		Performs fixation triggered drift correction. You can return to the 
+		set-up screen by pressing the 'q' key. Pressing the 'escape' key 
+		during drift-correction will not immediately abort the experiment, but 
+		will ask for confirmation first.
 
 		Keyword arguments:
 		pos -- the coordinate (x,y tuple) of the drift correction dot or None
@@ -383,7 +373,7 @@ class libeyelink:
 		True on success, False on failure
 
 		Exceptions:
-		Raises an exceptions.runtime_error on error
+		Raises an exceptions.runtime_error on error or on confirming 'abort experiment'
 		</DOC>"""
 
 		if self.recording:
@@ -406,7 +396,9 @@ class libeyelink:
 			try:
 				key,time = my_keyboard.get_key()
 			except response_error:
-				self.experiment.eyelink_esc_pressed = True
+				# self.experiment.eyelink_esc_pressed = True
+				self.confirm_abort_experiment()
+				# self.experiment.eyelink_esc_pressed = False
 				self.recording = False
 				return False
 			else:
@@ -466,6 +458,57 @@ class libeyelink:
 		print "libeyelink.fix_triggered_drift_correction(): success"
 
 		return True
+
+	def manual_drift_correction(self, pos = None):
+		
+		"""<DOC>
+		Performs manual (spacebar-triggered) drift correction. You can return to 
+		the set-up screen by pressing the 'q' key. Pressing the 'escape' key 
+		during drift-correction will not immediately abort the experiment, but 
+		will ask for confirmation first.
+
+		Keyword arguments:
+		pos -- the coordinate (x,y tuple) of the drift correction dot or None
+			   for the display center (default = None)
+
+		Returns:
+		True on success, False on failure
+
+		Exceptions:
+		Raises an exceptions.runtime_error on error or on confirming 'abort experiment'
+		</DOC>"""
+
+		if pos == None:
+			pos = self.resolution[0] / 2, self.resolution[1] / 2
+
+		# ensure eyelink connection before attempting DC
+		if not self.connected():
+			raise exceptions.runtime_error("The eyelink is not connected")
+
+		# attempt drift correction
+		try:
+			# Params: x, y, draw fix, allow_setup
+			print 'attempting drift correct...'
+			error = pylink.getEYELINK().doDriftCorrect(pos[0], pos[1], 0, 0)
+			if error != 27: # successful DC
+				print "libeyelink.drift_correction(): success"
+				return True
+			else: # aborted by Esc or Q
+				# WK Note: this actually never happens, pylink raises error on esc
+				print "libeyelink.drift_correction(): escape pressed"
+				if not self.experiment.eyelink_esc_pressed:
+					return False 
+		except: # drift correction failed
+			print "libeyelink.drift_correction(): try again"
+			if not self.experiment.eyelink_esc_pressed:
+					return False
+
+		print 'WK:Yes we got here!'
+		# if we get here, it means esc was pressed:
+		self.confirm_abort_experiment()
+		self.experiment.eyelink_esc_pressed = False
+		return False
+
 
 	def start_recording(self):
 

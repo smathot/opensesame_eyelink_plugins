@@ -50,7 +50,7 @@ class eyelink_calibrate(item.item):
 		self.force_drift_correct = 'no'
 
 		# This options makes OpenSesame restart automatically after each session,
-		# but this is not neessary anymore
+		# but this is not necessary anymore
 		self.restart = "No"
 
 		# Provide a short accurate description of the items functionality
@@ -62,8 +62,8 @@ class eyelink_calibrate(item.item):
 	def prepare(self):
 
 		"""
-		Prepare the item. In this case this means drawing a fixation
-		dot to an offline canvas.
+		Prepare the item. In this case this means to initialize
+		the eyelink object.
 		"""
 
 		# Pass the word on to the parent
@@ -131,14 +131,8 @@ class eyelink_calibrate(item.item):
 
 		self.set_item_onset()
 
-		while True:
-			self.experiment.eyelink.calibrate(beep=self.get('cal_beep')== \
-				'yes', target_size=self.get('cal_target_size'))
-			if self.experiment.eyelink_esc_pressed: 
-				self.experiment.eyelink.confirm_abort_experiment()
-				self.experiment.eyelink_esc_pressed = False		
-			else:
-				break
+		self.experiment.eyelink.calibrate(beep=self.get('cal_beep')== \
+			'yes', target_size=self.get('cal_target_size'))
 
 		# Report success
 		return True
