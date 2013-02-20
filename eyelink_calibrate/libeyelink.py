@@ -308,6 +308,9 @@ class libeyelink:
 		necessary. Pressing the 'escape' key during drift-correction will not 
 		immediately abort the experiment, but will ask for confirmation first.
 
+		Note: This function is simply a wrapper around
+		`fix_triggered_drift_correction()` and `manual_drift_correction()`
+
 		Keyword arguments:
 		pos -- the coordinate (x,y tuple) of the drift correction dot or None
 			   for the display center (default = None)
@@ -459,7 +462,7 @@ class libeyelink:
 
 		return True
 
-	def manual_drift_correction(self, pos = None):
+	def manual_drift_correction(self, pos=None):
 		
 		"""<DOC>
 		Performs manual (spacebar-triggered) drift correction. You can return to 
@@ -475,7 +478,8 @@ class libeyelink:
 		True on success, False on failure
 
 		Exceptions:
-		Raises an exceptions.runtime_error on error or on confirming 'abort experiment'
+		Raises an exceptions.runtime_error on error or on confirming 'abort
+		experiment'
 		</DOC>"""
 
 		if pos == None:
@@ -791,6 +795,7 @@ class libeyelink:
 		return t
 
 	def confirm_abort_experiment(self):
+	
 		"""
 		Asks for confirmation before aborting the experiment. Displays a
 		confirmation screen, collects the response, and acts accordingly
@@ -809,8 +814,8 @@ class libeyelink:
 		ld = 40
 		conf_canvas.clear()
 		conf_canvas.text("Really abort experiment?", y = yc - 3 * ld)
-		conf_canvas.text("Hit 'Y' to abort, ", y = yc - 0.5 * ld)
-		conf_canvas.text("Hit any other key or wait 5s to go to setup, ", \
+		conf_canvas.text("Press 'Y' to abort", y = yc - 0.5 * ld)
+		conf_canvas.text("Press any other key or wait 5s to go to setup", \
 			y = yc+0.5*ld)
 		conf_canvas.show()
 
@@ -831,21 +836,24 @@ class libeyelink:
 		"""<DOC>
 		Convert a surface to the format required by the eyelink.
 
-		WARNING: this function can take between 50-150 ms to complete, depending on the resolution of the image
-		and the cpu power of your machine. Do not use during time critical phases of your experiment
+		WARNING: this function can take between 50-150 ms to complete, depending
+		on the resolution of the image and the cpu power of your machine. Do not
+		use during time critical phases of your experiment.
 
 		Arguments:
 		canvas -- an openexp canvas
 
 		Returns:
-		A tuple with in ((list) image in array2d format, (int) image width, (int) image height)
+		A tuple with in ((list) image in array2d format, (int) image width,
+		(int) image height)
 		</DOC>"""
 
 		if self.experiment.canvas_backend != 'legacy':
-			raise exceptions.runtime_error('prepare_backdrop requires the legacy back-end')
+			raise exceptions.runtime_error( \
+				'prepare_backdrop requires the legacy back-end')
 
-		return (pygame.surfarray.array2d(canvas.surface).transpose().tolist(), self.experiment.width, self.experiment.height)
-
+		return (pygame.surfarray.array2d(canvas.surface).transpose().tolist(), \
+			self.experiment.width, self.experiment.height)
 
 	def set_backdrop(self, backdrop):
 
@@ -871,6 +879,7 @@ class libeyelink:
 		Returns:
 		(int) The amount of time in ms the function took to complete
 		</DOC>"""
+		
 		starttime = self.experiment.time()
 
 		# For now only the legacy backend will be supported
