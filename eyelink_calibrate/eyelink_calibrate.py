@@ -24,144 +24,131 @@ from PyQt4 import QtGui, QtCore
 class eyelink_calibrate(item.item):
 
 	"""
-	This class (the class with the same name as the module)
-	handles the basic functionality of the item. It does
-	not deal with GUI stuff.
+	The calibration plug-in also handles the connection to the eye tracker, and
+	therefore should always be the first eyelink plug-in of the experiment.
 	"""
 
-	def __init__(self, name, experiment, string = None):
+	def __init__(self, name, experiment, string=None):
 
 		"""
-		Constructor
+		Constructor.
+
+		Arguments:
+		name		--	The item name.
+		experiment	--	The experiment object.
+
+		Keyword arguments:
+		string		--	The definition string. (default=None)
 		"""
 
-		self.version = 0.23
-
-		# The item_typeshould match the name of the module
-		self.item_type = "eyelink_calibrate"
-
-		self._text_attached = "Yes"
-		self._text_not_attached = "No (dummy mode)"
+		self.version = 0.24
+		self.item_type = u'eyelink_calibrate'
+		self.description = \
+			u'Calibration/ initialization plugin for the Eyelink series of eye trackers (SR-Research)'
+		# Default values
+		self._text_attached = u'Yes'
+		self._text_not_attached = u'No (dummy mode)'
 		self.tracker_attached = self._text_attached
 		self.sacc_vel_thresh = 35
 		self.sacc_acc_thresh = 9500
 		self.cal_target_size = 16
-		self.cal_beep = 'yes'
-		self.force_drift_correct = 'no'
-
-		# This options makes OpenSesame restart automatically after each session,
-		# but this is not necessary anymore
-		self.restart = "No"
-
-		# Provide a short accurate description of the items functionality
-		self.description = "Calibration/ initialization plugin for the Eyelink series of eye trackers (SR-Research)"
-
+		self.cal_beep = u'yes'
+		self.force_drift_correct = u'no'
 		# The parent handles the rest of the contruction
 		item.item.__init__(self, name, experiment, string)
 
 	def prepare(self):
 
-		"""
-		Prepare the item. In this case this means to initialize
-		the eyelink object.
-		"""
+		"""Prepares the item and connects to the eyelink."""
 
-		# Pass the word on to the parent
 		item.item.prepare(self)
-
 		# Create an eyelink instance if it doesn't exist yet. Libeyelink is
 		# dynamically loaded
-		path = os.path.join(os.path.dirname(__file__), "libeyelink.py")
-		libeyelink = imp.load_source("libeyelink", path)
+		path = os.path.join(os.path.dirname(__file__), u'libeyelink.py')
+		libeyelink = imp.load_source(u'libeyelink', path)
 
-		if self.get("tracker_attached") == self._text_attached:
-
-			# The edf logfile has the same name as the opensesame log, but with a different extension
-			# We also filter out characters that are not supported
-			data_file = ""
-			for c in os.path.splitext(os.path.basename(self.get("logfile")))[0]:
+		if self.get(u'tracker_attached') == self._text_attached:
+			# The edf logfile has the same name as the opensesame log, but with
+			# a different extension We also filter out characters that are not
+			# supported.
+			data_file = u''
+			for c in os.path.splitext(os.path.basename(self.get( \
+				u'logfile')))[0]:
 				if c.isalnum():
 					data_file += c
-			data_file = data_file + ".edf"
+			data_file = data_file + u'.edf'
+			# Automatically rename common filenames that are too long.
+			if data_file[:8] == u'subject-':
+				data_file = u'S' + data_file[8:]
+			if data_file == u'defaultlog.edf':
+				data_file = u'default.edf'
 
-			# Automatically rename common filenames that are too long
-			if data_file[:8] == 'subject-':
-				data_file = 'S' + data_file[8:]
-			if data_file == 'defaultlog.edf':
-				data_file = 'default.edf'
-
-			print "eyelink_calibrate(): logging tracker data as %s" % data_file
-			debug.msg("loading libeyelink")
+			print u'eyelink_calibrate(): logging tracker data as %s' % data_file
+			debug.msg(u'loading libeyelink')
 			self.experiment.eyelink = libeyelink.libeyelink(self.experiment, \
-				(self.get("width"), self.get("height")), data_file=data_file, \
-				saccade_velocity_threshold=self.get("sacc_vel_thresh"), \
-				saccade_acceleration_threshold=self.get("sacc_acc_thresh"), \
-				force_drift_correct=self.get('force_drift_correct')== \
-				'yes')
+				(self.get(u'width'), self.get(u'height')), data_file= \
+				data_file, saccade_velocity_threshold=self.get( \
+				u'sacc_vel_thresh'), saccade_acceleration_threshold=self.get( \
+				u'sacc_acc_thresh'), force_drift_correct=self.get( \
+				u'force_drift_correct')== u'yes')
 			self.experiment.cleanup_functions.append(self.close)
-			if self.get("restart") == "Yes":
-				self.experiment.restart = True
 		else:
-			debug.msg("loading libeyelink (dummy mode)")
-			self.experiment.eyelink = libeyelink.libeyelink_dummy(self.experiment, (self.get("width"), self.get("height")))
-
-		# Report success
+			debug.msg(u'loading libeyelink (dummy mode)')
+			self.experiment.eyelink = libeyelink.libeyelink_dummy( \
+				self.experiment, (self.get(u'width'), self.get(u'height')))
+		# Report success DEPRECATED IN 0.27.2+
 		return True
 
 	def close(self):
 
 		"""
-		Perform some cleanup functions to make sure that we don't leave
-		OpenSesame and the eyelink in a mess
+		Performs some cleanup functions to make sure that we don't leave
+		OpenSesame and the eyelink in a mess.
 		"""
 
-		debug.msg("starting eyelink deinitialisation")
+		debug.msg(u'starting eyelink deinitialisation')
 		self.sleep(100)
 		self.experiment.eyelink.close()
 		self.experiment.eyelink = None
-		debug.msg("finished eyelink deinitialisation")
+		debug.msg(u'finished eyelink deinitialisation')
 		self.sleep(100)
 
 	def run(self):
 
 		"""
-		Run the item. In this case this means putting the offline canvas
+		Runs the item. In this case this means putting the offline canvas
 		to the display and waiting for the specified duration.
 		"""
 
 		self.set_item_onset()
-
-		self.experiment.eyelink.calibrate(beep=self.get('cal_beep')== \
-			'yes', target_size=self.get('cal_target_size'))
-
-		# Report success
+		self.experiment.eyelink.calibrate(beep=self.get(u'cal_beep')== \
+			u'yes', target_size=self.get(u'cal_target_size'))
+		# Report success DEPRECATED IN 0.27.2+
 		return True
 
 class qteyelink_calibrate(eyelink_calibrate, qtplugin.qtplugin):
 
-	"""
-	This class (the class named qt[name of module] handles
-	the GUI part of the plugin. For more information about
-	GUI programming using PyQt4, see:
-	<http://www.riverbankcomputing.co.uk/static/Docs/PyQt4/html/classes.html>
-	"""
+	"""The GUI part of the plug-in."""
 
-	def __init__(self, name, experiment, string = None):
+	def __init__(self, name, experiment, string=None):
 
 		"""
-		Constructor
-		"""
+		Constructor.
 
-		# Pass the word on to the parents
+		Arguments:
+		name		--	The item name.
+		experiment	--	The experiment object.
+
+		Keyword arguments:
+		string		--	The definition string. (default=None)
+		"""
+		
 		eyelink_calibrate.__init__(self, name, experiment, string)
 		qtplugin.qtplugin.__init__(self, __file__)
 
 	def init_edit_widget(self):
 
-		"""
-		This function creates the controls for the edit
-		widget.
-		"""
+		"""Initializes the controls."""
 
 		# Lock the widget until we're doing creating it
 		self.lock = True
@@ -199,37 +186,19 @@ class qteyelink_calibrate(eyelink_calibrate, qtplugin.qtplugin):
 
 	def apply_edit_changes(self):
 
-		"""
-		Set the variables based on the controls
-		"""
+		"""Applies the controls."""
 
-		# Abort if the parent reports failure of if the controls are locked
 		if not qtplugin.qtplugin.apply_edit_changes(self, False) or self.lock:
 			return False
-
-		# Refresh the main window, so that changes become visible everywhere
 		self.experiment.main_window.refresh(self.name)
-
-		# Report success
 		return True
 
 	def edit_widget(self):
 
-		"""
-		Set the controls based on the variables
-		"""
+		"""Update the controls."""
 
-		# Lock the controls, otherwise a recursive loop might aris
-		# in which updating the controls causes the variables to be
-		# updated, which causes the controls to be updated, etc...
 		self.lock = True
-
-		# Let the parent handle everything
 		qtplugin.qtplugin.edit_widget(self)
-
-		# Unlock
 		self.lock = False
-
-		# Return the _edit_widget
 		return self._edit_widget
 
