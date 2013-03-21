@@ -103,7 +103,7 @@ class eyelink_calibrate(item.item):
 				self.experiment.restart = True
 		else:
 			debug.msg("loading libeyelink (dummy mode)")
-			self.experiment.eyelink = libeyelink.libeyelink_dummy()
+			self.experiment.eyelink = libeyelink.libeyelink_dummy(self.experiment, (self.get("width"), self.get("height")))
 
 		# Report success
 		return True
