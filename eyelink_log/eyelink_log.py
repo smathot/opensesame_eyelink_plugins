@@ -22,110 +22,99 @@ from PyQt4 import QtGui, QtCore
 
 class eyelink_log(item.item):
 
-	"""
-	This class (the class with the same name as the module)
-	handles the basic functionality of the item. It does
-	not deal with GUI stuff.
-	"""
+	"""A plug-in to log information to the EyeLink"""
 
 	def __init__(self, name, experiment, string=None):
 
 		"""
 		Constructor
+
+		Arguments:
+		name		--	item name
+		experiment	--	an experiment object
+
+		Keyword arguments:
+		string		--	a definitional string (default=None)
 		"""
 
-		# The item_typeshould match the name of the module
 		self.item_type = "eyelink_log"
 		self.msg = ""
 		self.auto_log = 'no'
-
-		# Provide a short accurate description of the items functionality
+		self.throttle = 2
 		self.description = \
 			"Message log for the Eyelink series of eye trackers (SR-Research)"
-
-		# The parent handles the rest of the contruction
 		item.item.__init__(self, name, experiment, string)
 
 	def prepare(self):
 
 		"""
-		Prepare the item. In this case this means drawing a fixation
-		dot to an offline canvas.
+		Prepare the plug-in
+
+		Returns:
+		True
 		"""
 
-		# Pass the word on to the parent
 		item.item.prepare(self)
-
-		# Create an eyelink instance if it doesn't exist yet. Libeyelink is
-		# dynamically loaded
 		if not hasattr(self.experiment, "eyelink"):
 			raise exceptions.runtime_error( \
 				"Please connect to the eyelink using the the eyelink_calibrate plugin before using any other eyelink plugins")
-
 		self._msg = self.msg.split("\n")
-
-		# Report success
 		return True
 
 	def run(self):
 
 		"""
-		Run the item. In this case this means putting the offline canvas
-		to the display and waiting for the specified duration.
+		Run the plug-in
+
+		Returns:
+		True
 		"""
 
 		self.set_item_onset()
-
 		for msg in self._msg:
 			self.experiment.eyelink.log(self.eval_text(msg))
-			self.sleep(2)
-
+			self.sleep(self.throttle)
 		if self.auto_log == 'yes':
 			for logvar, _val, item in self.experiment.var_list():
 				val = self.get_check(logvar, default='NA')
 				self.experiment.eyelink.log('var %s %s' % (logvar, val))
-
-		# Report success
+				self.sleep(self.throttle)
 		return True
 
 class qteyelink_log(eyelink_log, qtplugin.qtplugin):
 
-	"""
-	This class (the class named qt[name of module] handles
-	the GUI part of the plugin. For more information about
-	GUI programming using PyQt4, see:
-	<http://www.riverbankcomputing.co.uk/static/Docs/PyQt4/html/classes.html>
-	"""
+	"""GUI part of the plug-in"""
 
-	def __init__(self, name, experiment, string = None):
+	def __init__(self, name, experiment, string=None):
 
 		"""
 		Constructor
-		"""
 
-		# Pass the word on to the parents
+		Arguments:
+		name		--	item name
+		experiment	--	an experiment object
+
+		Keyword arguments:
+		string		--	a definitional string (default=None)
+		"""
+		
 		eyelink_log.__init__(self, name, experiment, string)
 		qtplugin.qtplugin.__init__(self, __file__)
 
 	def init_edit_widget(self):
 
-		"""
-		This function creates the controls for the edit
-		widget.
-		"""
+		"""Initialize the controls"""
 
-		# Lock the widget until we're doing creating it
 		self.lock = True
-
-		# Pass the word on to the parent
 		qtplugin.qtplugin.init_edit_widget(self, False)
+		self.add_spinbox_control('throttle', \
+			'Sleep time between messages', 0, 1000, suffix='ms', tooltip= \
+			'A sleep time between messages to avoid overloading the EyeLink and losing data')
 		self.add_checkbox_control('auto_log', \
 			'Auto-detect and log all variables', tooltip= \
 			'Automatically auto-detect and log variables')
 		self.add_editor_control("msg", "Log message", tooltip= \
 			"The message to write to the Eyelink")
-
-		# Unlock
 		self.lock = True
 
 	def apply_edit_changes(self):
