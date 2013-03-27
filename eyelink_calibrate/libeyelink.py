@@ -391,7 +391,7 @@ class libeyelink:
 		if pos == None:
 			pos = self.resolution[0] / 2, self.resolution[1] / 2
 		self.prepare_drift_correction(pos)
-		my_keyboard = keyboard(self.experiment, keylist=[u'escape', u'q', \
+		my_keyboard = keyboard(self.experiment, keylist=[u'escape', u'q'], \
 			timeout=0)
 		# Loop until we have sufficient samples
 		lx = []
@@ -789,7 +789,7 @@ class libeyelink:
 		ld = 40
 		conf_canvas.clear()
 		conf_canvas.text(u'Really abort experiment?', y=yc-3*ld)
-		conf_canvas.text(u'Press 'Y' to abort', y=yc-0.5*ld)
+		conf_canvas.text(u'Press \'Y\' to abort', y=yc-0.5*ld)
 		conf_canvas.text(u'Press any other key or wait 5s to go to setup', \
 			y = yc+0.5*ld)
 		conf_canvas.show()
