@@ -54,6 +54,7 @@ class eyelink_calibrate(item.item):
 		self.cal_target_size = 16
 		self.cal_beep = u'yes'
 		self.force_drift_correct = u'no'
+
 		# The parent handles the rest of the contruction
 		item.item.__init__(self, name, experiment, string)
 
@@ -91,6 +92,7 @@ class eyelink_calibrate(item.item):
 				u'sacc_vel_thresh'), saccade_acceleration_threshold=self.get( \
 				u'sacc_acc_thresh'), force_drift_correct=self.get( \
 				u'force_drift_correct')== u'yes')
+
 			self.experiment.cleanup_functions.append(self.close)
 		else:
 			debug.msg(u'loading libeyelink (dummy mode)')

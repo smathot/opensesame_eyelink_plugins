@@ -45,8 +45,8 @@ class libeyelink:
 
 	MAX_TRY = 100
 
-	def __init__(self, experiment, resolution, data_file=u'default.edf', fg_color=(255, 255, 255), bg_color=(0, 0, 0), saccade_velocity_threshold=35, saccade_acceleration_threshold=9500, force_drift_correct=False):
 
+	def __init__(self, experiment, resolution, data_file=u'default.edf', fg_color=(255, 255, 255), bg_color=(0, 0, 0), saccade_velocity_threshold=35, saccade_acceleration_threshold=9500, force_drift_correct=False):
 		"""<DOC>
 		Constructor. Initializes the connection to the Eyelink.
 
@@ -55,6 +55,7 @@ class libeyelink:
 		resolution		--	A (width, height) tuple.
 
 		Keyword arguments:
+
 		data_file		--	The name of the EDF file. (default=u'default.edf')
 		fg_color		--	The foreground color for the calibration screen. #
 							(default=255,255,255)
@@ -103,6 +104,7 @@ class libeyelink:
 			except Exception as e:
 				raise exceptions.runtime_error( \
 					u'Failed to connect to the tracker: %s' % e)					
+
 			graphics_env = eyelink_graphics(self.experiment, _eyelink)
 			pylink.openGraphicsEx(graphics_env)				
 			
@@ -110,7 +112,7 @@ class libeyelink:
 		# as (one of) the first thingsm otherwise a segmentation fault occurs.
 		if force_drift_correct:
 			self.send_command('driftcorrect_cr_disable = OFF')	
-			
+
 		pylink.getEYELINK().openDataFile(self.data_file)
 		pylink.flushGetkeyQueue()
 		pylink.getEYELINK().setOfflineMode()
@@ -389,7 +391,7 @@ class libeyelink:
 		if pos == None:
 			pos = self.resolution[0] / 2, self.resolution[1] / 2
 		self.prepare_drift_correction(pos)
-		my_keyboard = keyboard(self.experiment, keylist=[u'escape', u'q', \
+		my_keyboard = keyboard(self.experiment, keylist=[u'escape', u'q'], \
 			timeout=0)
 		# Loop until we have sufficient samples
 		lx = []
@@ -787,7 +789,7 @@ class libeyelink:
 		ld = 40
 		conf_canvas.clear()
 		conf_canvas.text(u'Really abort experiment?', y=yc-3*ld)
-		conf_canvas.text(u'Press 'Y' to abort', y=yc-0.5*ld)
+		conf_canvas.text(u'Press \'Y\' to abort', y=yc-0.5*ld)
 		conf_canvas.text(u'Press any other key or wait 5s to go to setup', \
 			y = yc+0.5*ld)
 		conf_canvas.show()
