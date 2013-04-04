@@ -1100,7 +1100,7 @@ class libeyelink_dummy:
 					self.bbpos =  self.simulator.get_pos()[0] # position before blinking
 					self.simulator.set_pos(pos=(self.bbpos[0],self.resolution[1])) # set position to blinking position
 
-		return self.simulator.get_pos()
+		return self.simulator.get_pos()[0]
 
 	def pupil_size(self):
 
