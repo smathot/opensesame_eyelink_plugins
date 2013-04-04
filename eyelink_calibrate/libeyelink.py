@@ -988,7 +988,7 @@ class libeyelink_dummy:
 		while not pressed:
 			pressed, presstime = my_keyboard.get_key()
 			if pressed:
-				gazepos = self.sample()[0]
+				gazepos = self.sample()
 				if ((gazepos[0]-pos[0])**2  + (gazepos[1]-pos[1])**2)**0.5 < errdist:
 					self.simulator.set_visible(visible=False)
 					return True
@@ -1100,7 +1100,7 @@ class libeyelink_dummy:
 					self.bbpos =  self.simulator.get_pos()[0] # position before blinking
 					self.simulator.set_pos(pos=(self.bbpos[0],self.resolution[1])) # set position to blinking position
 
-		return self.simulator.get_pos()
+		return self.simulator.get_pos()[0]
 
 	def pupil_size(self):
 
