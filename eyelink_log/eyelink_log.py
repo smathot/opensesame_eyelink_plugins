@@ -16,7 +16,7 @@ along with OpenSesame.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from libopensesame import item, exceptions
-from libqtopensesame import qtplugin, inline_editor
+from libqtopensesame import qtplugin
 import os.path
 from PyQt4 import QtGui, QtCore
 
